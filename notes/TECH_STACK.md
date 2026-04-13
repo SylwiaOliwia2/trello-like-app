@@ -42,10 +42,14 @@ No deployment, as this app focus on tests. Runtests in CI against emepheral app 
 
 ## Test strategy
 
-| Test type | When to run |
+| Branch| When and what to run |
 |-----------|-------------|
-| **Lint, unit, API contract** | **Every PR** |
-| **Full E2E against ephemeral stack in CI** | **`stage`** or **every PR** if you **docker compose up** app + DB in the workflow (no cloud deploy). Good for portfolio; you pay with longer CI minutes. |
+| `dev` | **Smoke tests** except Smoke E2E tests. Run on **every PR** - fast tests of crucial parts (API, optionally security). The build should + tests should take up to 10 - 15 min. Focus on integration: frontend, backend and db comunicate with each other. |
+| `stage` | Full regression + full E2E + security + performance (if they exists). Run on **every PR**. |
+| `main` |  **Smoke tests** for API, integration and E2E (happy paths). Security. Run on every commit. |
+
+Frequently changing code - test early (dev / stage).
+Stable code - later test.
 
 ---
 

@@ -15,8 +15,8 @@ The app should have a `/health` endpoint and a minimal "Hello World" frontend.
 ## 2. GitHub Actions workflows (concrete split)
 
 Define one CI workflow triggered by `pull_request` to `dev|stage|main` and by `push` to those branches, then gate test depth by branch:
-- on `dev` run fast checks only (`lint`, type-check, unit tests) for quick feedback; or even less - **TO BE DEFINED** 
-- on `stage` run everything from `dev` plus API/integration tests and a full E2E suite against stage services;
-- on `main` run **smoke tests only** (or everything from `stage` plus a short post-deploy smoke E2E pack against production-critical paths.)
+- on `dev` smoke tests for API (integration?)  
+- on `stage` run a full E2E and API suite (smoke, regression) against stage services;
+- on `main` run **smoke tests only** against production-critical paths. Security. Run on every commit.
 
 ---
