@@ -1,0 +1,15 @@
+name: PR to dev
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run all API tests (Docker Compose)
+        run: docker compose --profile test run --rm api-test
