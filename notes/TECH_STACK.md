@@ -3,20 +3,21 @@
 
 ## Stack
 
-| Layer | Choice | Notes |
-|--------|--------|--------|
-| **Frontend** | Vue 3 + Vite | **Deploy:** Railway static first; optional later: fork and add **S3 + CloudFront** (same app; staying on one provider is simplest). |
-| **Backend** | Railway API from this repo | **Postgres** (plugin). Per env: separate DBs or **three Railway projects** (dev / stage / prod) for a simple demo. |
-| **CI / CD** | GitHub Actions | Build → **Railway CLI or API** deploy; **run DB migrations** on deploy. |
-| **Auth** | JWT (or session); MFA later | Document API base URL + auth in README. |
+| Layer | Choice |
+|--------|--------|
+| **Frontend** | Vue 3 + Vite |
+| **Backend** | Postgres of SQLite, needed some tool for DB  versions management (ex. Django, alembic) |
+| **API** | DRF or FastAPI |
+| **CI / CD** | GitHub Actions |
+| **Auth** | JWT (or session); MFA later |
 
-No AWS stack, as AWS is more setup-demanding, but similar in testing. In this app we focus on testing.
+No AWS stack, as AWS is more setup-demanding, but similar in testing. This app is focused on testing.
 
 ---
 
 ## Repository: one repo for tests and app
 
-**Single repo (monorepo)** with clear folders, e.g. `apps/web`, `apps/api`, `tests/e2e` (or `packages/…` if you prefer).  One PR shows app + test changes; one Actions workflow; easy local `docker compose` for “app + DB”; matches “portfolio shows I own the full system.” Slightly more path discipline in workflows.
+**Single repo** with clear folders, e.g. `apps/web`, `apps/api`, `tests/e2e` (or `packages/…` if you prefer). one Actions workflow; Each service (frontend, db, API, E2E tests) should have their own container. The app is being deployed using `docker compose`.
 
 Separate repo for tests would be beneficial in real-life projects. It would be an overkill for testing-demo app (devops-demanding).
 
@@ -24,39 +25,31 @@ Separate repo for tests would be beneficial in real-life projects. It would be a
 
 ## Tests
 
-- **Unit / API tests (fast):** use `ubuntu-latest` or default backend container. Runner with `pnpm/npm test` — no extra container required.
+- **Unit / API tests (fast):**
 - **E2E (Playwright/Cypress):** use either:
-  - **Official Playwright/Cypress Docker image** as the job container, or  
-  - **Service containers** in Actions for Postgres if the API runs in-process against a real DB in CI.
-
+  - **Official Playwright/Cypress Docker image** as the job container
 ---
 
 ## Branches: `dev`, `stage`, `prod`
 
-**Recommendation (simple, common):**
+---
 
-| Branch | Role | Deploy target |
-|--------|------|----------------|
-| **`main`** | Production-ready code | **prod** environment (manual or tagged release). |
-| **`dev`** | Integration line | **dev** environment (auto on push). |
-| **`stage`** | Pre-release QA | **stage** environment (auto or manual). |
+## Deployment
 
-You can also use **environment protection** on GitHub (required reviewers for `prod`) instead of relying only on branch names.
+No deployment, as this app focus on tests. Runtests in CI against emepheral app (run in CI from `docker compose`).
 
 ---
 
-## Run tests on every branch or only on `stage`?
+## Test strategy
 
-| Test type | When to run |
+| Branch| When and what to run |
 |-----------|-------------|
-| **Lint, unit, API contract** | **Every PR** (and often on push to `main` / `develop`). Fast feedback. |
-| **Full E2E against a deployed URL** | **`stage` (and optionally `main` after deploy)** — E2E needs a **stable, known URL** and seeded data. Running full E2E on every feature branch is possible if each PR gets a **preview environment** (more setup/cost). |
-| **E2E against ephemeral stack in CI** | **Every PR** if you **docker compose up** app + DB in the workflow (no cloud deploy). Good for portfolio; you pay with longer CI minutes. |
+| `dev` | **Smoke tests** except Smoke E2E tests. Run on **every PR** - fast tests of crucial parts (API, optionally security). The build should + tests should take up to 10 - 15 min. Focus on integration: frontend, backend and db comunicate with each other. |
+| `stage` | Full regression + full E2E + security + performance (if they exists). Run on **every PR**. |
+| `main` |  **Smoke tests** for API, integration and E2E (happy paths). Security. Run on every commit. |
 
-**Practical default for a cheap demo:**  
-- PR: **fast tests** (Lint, unit, API contract).  
-- **`stage`:** **deploy + E2E against stage URL**.  
-- **`prod`:** **smoke** or subset after deploy.
+Frequently changing code - test early (dev / stage).
+Stable code - later test.
 
 ---
 
