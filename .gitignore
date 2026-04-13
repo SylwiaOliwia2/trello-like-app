@@ -1,2 +1,8 @@
 # notes/*
 .cursorrules
+**/node_modules
+**/.pytest_cache
+**/__pycache__
+tests/e2e/test-results
+tests/e2e/playwright-report
+.venv
