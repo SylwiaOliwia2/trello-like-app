@@ -20,4 +20,10 @@ Use the same command in your CI job:
 - `curl -f http://127.0.0.1:8000/health`
 - `docker compose down -v`
 
-Tests are intentionally skipped for now.
+## API test (`/health`)
+- Run with Docker Compose:
+  - `docker compose --profile test run --rm api-test`
+- Detached app + test flow (CI-friendly):
+  - `docker compose up --build -d`
+  - `docker compose --profile test run --rm api-test`
+  - `docker compose down -v`
