@@ -1,16 +1,31 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     ports:
       - "8000:8000"
+    depends_on:
+      - db
 
   api-test:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     command: ["python", "-m", "pytest", "apps/api/tests", "-q"]
+    depends_on:
+      - db
     profiles:
       - test
 
@@ -20,3 +35,6 @@ services:
       dockerfile: apps/web/Dockerfile
     ports:
       - "5173:5173"
+
+volumes:
+  postgres_data:
