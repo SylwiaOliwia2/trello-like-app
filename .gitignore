@@ -1,4 +1,4 @@
-# notes/*
+#  notes/*
 .cursorrules
 **/.pytest_cache
 **/__pycache__

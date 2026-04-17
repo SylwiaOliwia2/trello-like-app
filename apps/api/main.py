@@ -21,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATABASE_URL = "postgresql+psycopg2://app:app@db:5432/appdb"
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+psycopg2://app:app@db:5432/appdb")
 JWT_SECRET = "dev-secret-not-for-production"
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
@@ -221,6 +221,7 @@ def me(current_user: User = Depends(get_current_user)) -> CurrentUserResponse:
     return CurrentUserResponse.model_validate(current_user)
 
 
+# NOTE: JWT-protected smoke endpoint
 @app.get("/protected")
 def protected(current_user: User = Depends(get_current_user)) -> dict[str, str]:
     return {"message": f"Hello {current_user.email}"}

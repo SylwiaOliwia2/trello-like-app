@@ -23,7 +23,16 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    command: ["python", "-m", "pytest", "apps/api/tests", "-q"]
+    environment:
+      TEST_DATABASE_URL: postgresql+psycopg2://app:app@db:5432/appdb_test
+    command:
+      [
+        "sh",
+        "-c",
+        "python -m pip install --no-cache-dir -r /app/apps/api/requirements.txt && python -m pytest apps/api/tests -q",
+      ]
+    volumes:
+      - .:/app
     depends_on:
       - db
     profiles:
