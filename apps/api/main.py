@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 import base64
 import hashlib
@@ -94,7 +95,7 @@ class HealthResponse(BaseModel):
     status: str
 
 
-def get_db() -> Session:
+def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db

@@ -3,73 +3,49 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from apps.api.tests.helpers.login_helpers import get_user_by_email_for_test
-from apps.api.tests.helpers.login_helpers import _totp_secret_from_otpauth_url
+from apps.api.main import MfaCode, User
+from apps.api.tests.fixtures.user_fixtures import (
+    FIXED_MFA_SECRET_FOR_TESTS,
+    SEEDED_USER_PASSWORD,
+    SEEDED_USER_WITH_MFA_EMAIL,
+)
+from apps.api.tests.helpers.login_helpers import _login_json
 
 
 @pytest.mark.smoke
-def test_register_without_mfa_returns_201(
+def test_login_without_mfa_returns_access_token(
     client: TestClient,
-    db_session: Session,
-    no_mfa_payload: dict[str, object],
+    registered_user_no_mfa: User,
 ) -> None:
-    response = client.post("/auth/register", json=no_mfa_payload)
-
-    assert response.status_code == 201
-    body = response.json()
-
-    assert body["email"] == "no_mfa.user@example.com"
-    assert body["mfa_enabled"] is False
-    assert body["mfa_otpauth_url"] is None
-
-    db_session.expire_all()
-    user = get_user_by_email_for_test(db_session, "no_mfa.user@example.com")
-    assert user is not None
-    assert user.email == "no_mfa.user@example.com"
-    assert user.mfa_enabled is False
-
-
-@pytest.mark.smoke
-def test_register_with_mfa_returns_otpauth_url(
-    client: TestClient,
-    db_session: Session,
-    mfa_payload: dict[str, object],
-) -> None:
-    """
-    Requires `POST /auth/register/mfa/confirm` (not implemented yet) to finalize registration.
-    """
-    response = client.post("/auth/register", json=mfa_payload)
-
-    assert response.status_code == 201
-    body = response.json()
-
-    assert body["email"] == mfa_payload["email"]
-    assert body["mfa_enabled"] is True
-    assert body["mfa_otpauth_url"].startswith("otpauth://totp/")
-
-    db_session.expire_all()
-
-    # User is not registered yet
-    assert get_user_by_email_for_test(db_session, str(mfa_payload["email"])) is None
-
-    # User scanned the QR / entered the secret in an authenticator app — first valid OTP.
-    secret = _totp_secret_from_otpauth_url(body["mfa_otpauth_url"])
-    otp = pyotp.TOTP(secret).now()
-
-    confirm = client.post(
-        "/auth/register/mfa/confirm",
-        json={
-            "email": mfa_payload["email"],
-            "password": mfa_payload["password"],
-            "otp": otp,
-        },
+    response = client.post(
+        "/auth/login",
+        json=_login_json(registered_user_no_mfa.email, SEEDED_USER_PASSWORD),
     )
-    assert confirm.status_code == 201
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    assert len(data["access_token"]) > 0
+
+
+@pytest.mark.smoke
+def test_login_with_mfa_valid_otp_returns_access_token(
+    client: TestClient,
+    db_session: Session,
+    registered_user_with_mfa: User,
+) -> None:
+    otp = pyotp.TOTP(FIXED_MFA_SECRET_FOR_TESTS).now()
+    response = client.post(
+        "/auth/login",
+        json=_login_json(SEEDED_USER_WITH_MFA_EMAIL, SEEDED_USER_PASSWORD, otp=otp),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["token_type"] == "bearer"
+    assert "access_token" in data
 
     db_session.expire_all()
-    
-    # User is registered after MFA confirmation
-    user = get_user_by_email_for_test(db_session, str(mfa_payload["email"]))
-    assert user is not None
-    assert user.email == mfa_payload["email"]
-    assert user.mfa_enabled is True
+    # test if succesfull login created exactly one MFA code  
+    assert db_session.query(MfaCode).filter(MfaCode.user_id == registered_user_with_mfa.id).count() == 1

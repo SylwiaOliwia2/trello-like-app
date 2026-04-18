@@ -57,7 +57,9 @@ The app uses 3 branches: `dev`, `stage`, and `main`.
 | `main` | Smoke checks for API, integration, and happy-path E2E flows, plus basic security checks. Run on every commit to the production branch. |
 
 The CI environment should use `docker compose up`.
-Local QA verification should use the same Docker-based setup to keep environments consistent.
+
+## Test database
+Both CI and local tests use the same emepheral database. The test dabase uses **one connection** + transactions with savepoints (**rollback after each test**). Althought it doesn't imitate how production database works (multiple sessions, real commits), this approach is enough for this app. 
 
 ## Prioritization
 Testing follows a risk-based approach.

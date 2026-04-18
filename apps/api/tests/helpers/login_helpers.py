@@ -13,3 +13,10 @@ def _totp_secret_from_otpauth_url(otpauth_url: str) -> str:
     secret = urllib.parse.parse_qs(parsed.query).get("secret", [None])[0]
     assert secret is not None
     return secret
+
+
+def _login_json(email: str, password: str, otp: str | None = None) -> dict[str, object]:
+    body: dict[str, object] = {"email": email, "password": password}
+    if otp is not None:
+        body["otp"] = otp
+    return body

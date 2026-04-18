@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 
-from apps.api.main import Base, SessionLocal, app, engine
+from apps.api.main import Base, app, engine, get_db
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -33,25 +33,45 @@ def ensure_test_database_exists() -> None:
         admin_engine.dispose()
 
 
-@pytest.fixture(autouse=True)
-def reset_test_database_tables() -> Generator[None, None, None]:
-    """Ensure schema exists and clear data between tests for repeatable runs."""
+@pytest.fixture(scope="session", autouse=True)
+def init_database_schema(ensure_test_database_exists: None) -> None:
     Base.metadata.create_all(bind=engine)
-    with SessionLocal() as session:
-        session.execute(text("TRUNCATE TABLE users RESTART IDENTITY CASCADE"))
-        session.commit()
-    yield
 
 
 @pytest.fixture()
-def client() -> TestClient:
-    return TestClient(app)
+def db_session(init_database_schema: None) -> Generator[Session, None, None]:
+    """One connection + outer transaction"""
+    with engine.begin() as cleanup_conn:
+        cleanup_conn.execute(text("TRUNCATE TABLE users RESTART IDENTITY CASCADE"))
 
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(
+        bind=connection,
+        join_transaction_mode="create_savepoint",
+        autoflush=False,
+        expire_on_commit=False,
+    )
+    # Imported here so pytest can load `user_fixtures` as a plugin first
+    from apps.api.tests.fixtures.user_fixtures import seed_baseline_users
 
-@pytest.fixture()
-def db_session() -> Generator[Session, None, None]:
-    session = SessionLocal()
+    seed_baseline_users(session)
     try:
         yield session
     finally:
         session.close()
+        transaction.rollback()
+        connection.close()
+
+
+@pytest.fixture()
+def client(db_session: Session) -> Generator[TestClient, None, None]:
+    def override_get_db() -> Generator[Session, None, None]:
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()
