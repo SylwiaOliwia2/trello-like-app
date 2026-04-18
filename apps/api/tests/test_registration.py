@@ -74,3 +74,24 @@ def test_register_with_mfa_returns_otpauth_url(
     assert user is not None
     assert user.email == mfa_payload["email"]
     assert user.mfa_enabled is True
+
+
+def test_register_the_same_email_twice_returns_400(
+    client: TestClient,
+    db_session: Session,
+    no_mfa_payload: dict[str, object],
+) -> None:
+    
+    # REGISTER FIRST TIME - SUCCESSFULLY REGISTERED
+    response = client.post("/auth/register", json=no_mfa_payload)
+
+    assert response.status_code == 201
+
+    db_session.expire_all()
+
+    assert get_user_by_email_for_test(db_session, str(no_mfa_payload["email"])) is not None
+
+    # REGISTER SECOND TIME - FAILS WITH 400
+    response = client.post("/auth/register", json=no_mfa_payload)
+
+    assert response.status_code == 400
