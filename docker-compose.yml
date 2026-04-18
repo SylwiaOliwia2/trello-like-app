@@ -38,6 +38,26 @@ services:
     profiles:
       - test
 
+  e2e-test:
+    build:
+      context: .
+      dockerfile: e2e/Dockerfile
+    environment:
+      E2E_API_URL: http://api:8000
+    command:
+      [
+        "sh",
+        "-c",
+        "python -m pip install --no-cache-dir -q -r e2e/requirements.txt && python -m pytest e2e/tests -q --base-url=http://web:5173",
+      ]
+    volumes:
+      - .:/app
+    depends_on:
+      - api
+      - web
+    profiles:
+      - test
+
   web:
     build:
       context: .

@@ -5,7 +5,7 @@ Create a minimal app:
 - `apps/web` — Vue 3 + Vite (build → static assets).
 - `apps/api` — HTTP API + migration runner (use alembic or Django). Use Python.
 - database
-- `tests/e2e` — Playwright (or Cypress) added when you wire stage E2E. Use JavaScript. 
+- `tests/e2e` — Playwright (or Cypress) added when you wire stage E2E. Use Python. 
 - `docker-compose.yml`
 
 The app should have a `/health` endpoint and a minimal "Hello World" frontend.
