@@ -13,6 +13,3 @@ jobs:
 
       - name: Run all API tests (Docker Compose)
         run: docker compose --profile test run --rm api-test
-
-      # - name: Run E2E tests (Docker Compose)
-      #   run: docker compose build web && docker compose --profile test run --rm e2e-test
