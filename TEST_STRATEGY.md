@@ -20,7 +20,7 @@ Testing is iterative and done feature by feature. Each feature enters testing af
 
 ### Structure
 - API tests are located in `apps/api/tests/`
-- E2E tests are located in `tests/e2e/`
+- E2E tests are located in `e2e/tests/`
 - E2E tests should follow the Page Object Model (POM)
 
 ### Test Technologies

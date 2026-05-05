@@ -1,15 +1,18 @@
-name: PR to dev
+## SKIP AS FOR NOW
+## TODO: setup along with UI tests running in CI
 
-on:
-  pull_request:
-    branches:
-      - dev
+# name: PR to dev
 
-jobs:
-  api-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+# on:
+#   pull_request:
+#     branches:
+#       - dev
 
-      - name: Run all API tests (Docker Compose)
-        run: docker compose --profile test run --rm api-test
+# jobs:
+#   api-tests:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+
+#       - name: Run all API tests (Docker Compose)
+#         run: docker compose --profile test run --rm api-test

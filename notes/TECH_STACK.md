@@ -1,4 +1,4 @@
-# Tech stack and deployment (decision log)
+# Tech stack and deployment
 
 
 ## Stack

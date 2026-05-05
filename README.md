@@ -14,11 +14,14 @@
 3. Stop:
    - `docker compose down`
 
+
 ## Run in CI (Docker Compose)
-Use the same command in your CI job:
-- `docker compose up --build -d`
-- `curl -f http://127.0.0.1:8000/health`
-- `docker compose down -v`
+**Note**: CI skipped as for now.
+
+~~Use the same command in your CI job:~~
+~~- `docker compose up --build -d`~~
+~~- `curl -f http://127.0.0.1:8000/health`~~
+~~- `docker compose down -v`~~
 
 ## API tests
 - Run with Docker Compose:
