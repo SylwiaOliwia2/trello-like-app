@@ -36,7 +36,7 @@
     <p v-if="error" class="error">{{ error }}</p>
     <p class="footer-link">
       No account?
-      <router-link to="/register">Register</router-link>
+      <router-link to="/register" data-testid="go-to-register">Register</router-link>
     </p>
   </section>
 </template>

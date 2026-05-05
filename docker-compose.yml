@@ -45,5 +45,23 @@ services:
     ports:
       - "5173:5173"
 
+  e2e-test:
+    build:
+      context: .
+      dockerfile: e2e/Dockerfile
+    working_dir: /app
+    environment:
+      E2E_BASE_URL: http://web:5173
+      E2E_HEADLESS: "true"
+      PYTHONPATH: /app
+    command: ["python", "-m", "pytest", "-q", "e2e/tests"]
+    volumes:
+      - .:/app
+    depends_on:
+      - web
+      - api
+    profiles:
+      - test
+
 volumes:
   postgres_data:

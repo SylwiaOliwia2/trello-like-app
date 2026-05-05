@@ -31,6 +31,12 @@
   - `docker compose --profile test run --rm api-test`
   - `docker compose down -v`
 
+## E2E tests (Docker Compose)
+- Run E2E in dedicated container:
+  - `docker compose up --build -d db api web`
+  - `docker compose --profile test run --rm e2e-test`
+  - `docker compose down -v`
+
 ## Development
 
 ### Query the database locally
