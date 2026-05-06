@@ -11,6 +11,7 @@ class LoginPage:
         self.password_input = page.locator('[data-testid="login-password"]')
         self.login_button = page.locator('[data-testid="login-submit"]')
         self.register_link = page.locator('[data-testid="go-to-register"]')
+        self.otp_input = page.locator('[data-testid="login-otp"]')
 
     def navigate(self):
         base_url = os.getenv("E2E_BASE_URL", "http://127.0.0.1:5173").rstrip("/")

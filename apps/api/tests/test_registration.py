@@ -30,7 +30,6 @@ def test_register_without_mfa_returns_201(
 
 
 @pytest.mark.smoke
-@pytest.mark.skip(reason="Bug to be resolved")
 def test_register_with_mfa_returns_otpauth_url(
     client: TestClient,
     db_session: Session,

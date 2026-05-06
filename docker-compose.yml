@@ -52,6 +52,7 @@ services:
     working_dir: /app
     environment:
       E2E_BASE_URL: http://web:5173
+      E2E_API_URL: http://api:8000
       E2E_HEADLESS: "true"
       PYTHONPATH: /app
     command: ["python", "-m", "pytest", "-q", "e2e/tests"]

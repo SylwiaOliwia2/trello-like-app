@@ -1,10 +1,14 @@
+import os
 from playwright.sync_api import Page
 
 class HomePage:
     def __init__(self, page: Page):
         self.page = page
+        self.logout_button = page.locator('[data-testid="logout-button"]')
 
     def navigate(self):
-        self.page.goto("/home")
+        base_url = os.getenv("E2E_BASE_URL", "http://127.0.0.1:5173").rstrip("/")
+        self.page.goto(f"{base_url}/home")
 
-    # NOTE: home page not implemented yet
+    def click_logout(self):
+        self.logout_button.click()

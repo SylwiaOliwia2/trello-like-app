@@ -49,3 +49,56 @@ def test_login_with_mfa_valid_otp_returns_access_token(
     db_session.expire_all()
     # test if succesfull login created exactly one MFA code  
     assert db_session.query(MfaCode).filter(MfaCode.user_id == registered_user_with_mfa.id).count() == 1
+
+
+@pytest.mark.smoke
+def test_login_with_wrong_password_does_not_return_access_token(
+    client: TestClient,
+    registered_user_no_mfa: User,
+) -> None:
+    response = client.post(
+        "/auth/login",
+        json=_login_json(registered_user_no_mfa.email, "WRONG_PASSWORD"),
+    )
+
+    assert response.status_code == 401
+    data = response.json()
+    assert "access_token" not in data
+
+    # TODO: add similar test for MFA login
+
+def test_user_with_MFA_enabled_can_not_log_in_with_empty_MFA_code(
+    client: TestClient,
+    registered_user_with_mfa: User,
+) -> None:
+    response = client.post(
+        "/auth/login",
+        json=_login_json(SEEDED_USER_WITH_MFA_EMAIL, SEEDED_USER_PASSWORD, otp=None),
+    )
+    assert response.status_code == 401
+    data = response.json()
+    assert "access_token" not in data
+
+
+@pytest.mark.smoke
+def test_login_sql_injection_attempt_is_rejected(client: TestClient) -> None:
+    response = client.post(
+        "/auth/login",
+        json=_login_json("sqli.user@example.com", "x' OR '1'='1"),
+    )
+
+    assert response.status_code == 401
+    data = response.json()
+    assert "access_token" not in data
+
+
+@pytest.mark.smoke
+def test_login_xss_attempt_is_rejected(client: TestClient) -> None:
+    response = client.post(
+        "/auth/login",
+        json=_login_json("xss.user@example.com", "<img src=x onerror=alert(1)>"),
+    )
+
+    assert response.status_code == 401
+    data = response.json()
+    assert "access_token" not in data

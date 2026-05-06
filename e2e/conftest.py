@@ -2,9 +2,11 @@ import os
 from pathlib import Path
 from typing import Generator
 import uuid
+import json
 
 import pytest
 from playwright.sync_api import Browser, Page, Playwright, sync_playwright
+import requests
 
 
 @pytest.fixture(scope="session")
@@ -48,3 +50,62 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]):
     screenshots_dir.mkdir(parents=True, exist_ok=True)
     screenshot_name = f"{item.name}_{uuid.uuid4()}.png".replace("/", "_").replace(" ", "_")
     page.screenshot(path=str(screenshots_dir / screenshot_name), full_page=True)
+
+
+@pytest.fixture(scope="session")
+def e2e_api_url() -> str:
+    return os.getenv("E2E_API_URL", "http://127.0.0.1:8000").rstrip("/")
+
+
+@pytest.fixture()
+def api_session() -> requests.Session:
+    return requests.Session()
+
+
+@pytest.fixture()
+def registered_user(e2e_api_url: str, api_session: requests.Session) -> dict[str, str]:
+    email = f"e2e_{uuid.uuid4().hex}@example.com"
+    password = "StrongPass123!"
+    payload = {"email": email, "password": password, "mfa_enabled": False}
+    resp = api_session.post(f"{e2e_api_url}/auth/register", json=payload, timeout=10)
+    resp.raise_for_status()
+    return {"email": email, "password": password}
+
+
+@pytest.fixture()
+def registered_mfa_user(e2e_api_url: str, api_session: requests.Session) -> dict[str, str]:
+    email = f"e2e_mfa_{uuid.uuid4().hex}@example.com"
+    password = "StrongPass123!"
+    payload = {"email": email, "password": password, "mfa_enabled": True}
+    resp = api_session.post(f"{e2e_api_url}/auth/register", json=payload, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+    return {
+        "email": email,
+        "password": password,
+        "mfa_otpauth_url": str(data.get("mfa_otpauth_url") or ""),
+    }
+
+
+@pytest.fixture()
+def access_token(e2e_api_url: str, api_session: requests.Session, registered_user: dict[str, str]) -> str:
+    resp = api_session.post(
+        f"{e2e_api_url}/auth/login",
+        json={"email": registered_user["email"], "password": registered_user["password"], "otp": None},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    token = data.get("access_token")
+    if not token:
+        raise RuntimeError(f"Expected access_token in response, got: {data}")
+    return str(token)
+
+
+@pytest.fixture()
+def logged_in_page(page: Page, access_token: str) -> Page:
+    token_js = json.dumps(access_token)
+    page.context.add_init_script(f'window.localStorage.setItem("auth_token", {token_js});')
+    page.goto("/home")
+    page.locator('[data-testid="home-title"]').wait_for()
+    return page
