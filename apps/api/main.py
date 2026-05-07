@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import os
+import secrets
 
 import jwt
 import pyotp
@@ -74,10 +75,23 @@ class TokenResponse(BaseModel):
 
 
 class RegisterResponse(BaseModel):
-    id: int
+    id: int | None = None
     email: str
     mfa_enabled: bool
     mfa_otpauth_url: str | None = None
+    registration_token: str | None = None
+    registration_pending: bool = False
+
+
+class ConfirmRegisterRequest(BaseModel):
+    registration_token: str
+    otp: str
+
+
+class LegacyConfirmRegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+    otp: str
 
 
 class CurrentUserResponse(BaseModel):
@@ -87,12 +101,65 @@ class CurrentUserResponse(BaseModel):
     mfa_enabled: bool
 
 
-class LoginPendingMfaResponse(BaseModel):
-    mfa_required: bool = True
-
-
 class HealthResponse(BaseModel):
     status: str
+
+
+class PendingRegistration(BaseModel):
+    email: str
+    password_hash: str
+    mfa_enabled: bool
+    mfa_secret: str
+    created_at: datetime
+
+
+PENDING_REGISTRATION_TTL = timedelta(minutes=10)
+pending_registrations: dict[str, PendingRegistration] = {}
+
+
+def cleanup_expired_pending_registrations() -> None:
+    now = datetime.now(UTC)
+    expired = [
+        token
+        for token, pending in pending_registrations.items()
+        if pending.created_at + PENDING_REGISTRATION_TTL < now
+    ]
+    for token in expired:
+        pending_registrations.pop(token, None)
+
+
+def confirm_pending_registration(
+    registration_token: str,
+    otp: str,
+    db: Session,
+) -> RegisterResponse:
+    pending = pending_registrations.get(registration_token)
+    if not pending:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired registration token")
+
+    if db.query(User).filter(User.email == pending.email).first():
+        pending_registrations.pop(registration_token, None)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists")
+
+    if not pyotp.TOTP(pending.mfa_secret).verify(otp, valid_window=1):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OTP")
+
+    user = User(
+        email=pending.email,
+        password_hash=pending.password_hash,
+        mfa_enabled=pending.mfa_enabled,
+        mfa_secret=pending.mfa_secret,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    pending_registrations.pop(registration_token, None)
+
+    return RegisterResponse(
+        id=user.id,
+        email=user.email,
+        mfa_enabled=user.mfa_enabled,
+    )
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -169,11 +236,30 @@ def health() -> HealthResponse:
 
 @app.post("/auth/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> RegisterResponse:
+    cleanup_expired_pending_registrations()
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists")
 
     mfa_secret = pyotp.random_base32() if payload.mfa_enabled else None
+    if payload.mfa_enabled and mfa_secret:
+        registration_token = secrets.token_urlsafe(32)
+        pending_registrations[registration_token] = PendingRegistration(
+            email=payload.email,
+            password_hash=hash_password(payload.password),
+            mfa_enabled=True,
+            mfa_secret=mfa_secret,
+            created_at=datetime.now(UTC),
+        )
+        mfa_otpauth_url = pyotp.TOTP(mfa_secret).provisioning_uri(name=payload.email, issuer_name="task-manager-app")
+        return RegisterResponse(
+            email=payload.email,
+            mfa_enabled=True,
+            mfa_otpauth_url=mfa_otpauth_url,
+            registration_token=registration_token,
+            registration_pending=True,
+        )
+
     user = User(
         email=payload.email,
         password_hash=hash_password(payload.password),
@@ -197,15 +283,41 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> Registe
     )
 
 
-@app.post("/auth/login", response_model=TokenResponse | LoginPendingMfaResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse | LoginPendingMfaResponse:
+@app.post("/auth/register/confirm", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
+def confirm_register(payload: ConfirmRegisterRequest, db: Session = Depends(get_db)) -> RegisterResponse:
+    cleanup_expired_pending_registrations()
+    return confirm_pending_registration(payload.registration_token, payload.otp, db)
+
+
+@app.post("/auth/register/mfa/confirm", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
+def confirm_register_legacy(payload: LegacyConfirmRegisterRequest, db: Session = Depends(get_db)) -> RegisterResponse:
+    cleanup_expired_pending_registrations()
+    matching_token = next(
+        (
+            token
+            for token, pending in pending_registrations.items()
+            if pending.email == payload.email and verify_password(payload.password, pending.password_hash)
+        ),
+        None,
+    )
+    if not matching_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired pending registration",
+        )
+
+    return confirm_pending_registration(matching_token, payload.otp, db)
+
+
+@app.post("/auth/login", response_model=TokenResponse)
+def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     if user.mfa_enabled:
         if not payload.otp:
-            return LoginPendingMfaResponse()
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="MFA code required")
         if not user.mfa_secret or not pyotp.TOTP(user.mfa_secret).verify(payload.otp, valid_window=1):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OTP")
 

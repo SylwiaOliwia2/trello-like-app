@@ -32,6 +32,13 @@ export async function register(payload) {
   });
 }
 
+export async function confirmRegister(payload) {
+  return request("/auth/register/confirm", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function login(payload) {
   return request("/auth/login", {
     method: "POST",
