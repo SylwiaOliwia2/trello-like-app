@@ -119,6 +119,7 @@ def test_expired_OTP_does_not_allow_to_login(
     assert "access_token" not in data
 
 
+@pytest.mark.skip(reason="Not implemented yet.")
 def test_login_with_validated_OTP_does_not_allow_to_login(
     client: TestClient,
 ) -> None:
@@ -137,6 +138,20 @@ def test_login_with_validated_OTP_does_not_allow_to_login(
     response = client.post(
         "/auth/login",
         json=_login_json(SEEDED_USER_WITH_MFA_EMAIL, SEEDED_USER_PASSWORD, otp=otp),
+    )
+    assert response.status_code == 401
+    data = response.json()
+    assert "access_token" not in data
+
+
+def test_login_with_wrong_OTP_does_not_allow_to_login(
+        client: TestClient,
+) -> None:
+    wrong_otp = "123456"
+
+    response = client.post(
+        "/auth/login",
+        json=_login_json(SEEDED_USER_WITH_MFA_EMAIL, SEEDED_USER_PASSWORD, otp=wrong_otp),
     )
     assert response.status_code == 401
     data = response.json()

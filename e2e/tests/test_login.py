@@ -1,7 +1,9 @@
 import re
+from urllib.parse import parse_qs, urlparse
 import requests
 from playwright.sync_api import Page, expect
 import pytest
+import pyotp
 
 from e2e.POM.login import LoginPage
 from e2e.POM.home import HomePage
@@ -84,3 +86,42 @@ def test_MFA_is_required_for_MFA_users(page: Page, registered_mfa_user: dict[str
     expect(login_page.otp_input).to_be_visible()
     assert login_page.otp_input.get_attribute("required") is not None
 
+
+@pytest.mark.regression
+def test_mfa_user_is_prompted_for_mfa_on_every_login(page: Page, registered_mfa_user: dict[str, str]):
+    #login
+    login_page = LoginPage(page)
+    login_page.navigate()
+
+    login_page.provide_email(registered_mfa_user["email"])
+    login_page.provide_password(registered_mfa_user["password"])
+    login_page.click_login()
+
+    parsed = urlparse(registered_mfa_user["mfa_otpauth_url"])
+    secret = parse_qs(parsed.query).get("secret", [""])[0]
+    assert secret, "Missing TOTP secret in mfa_otpauth_url"
+    otp = pyotp.TOTP(secret).now()
+
+    login_page.otp_input.fill(otp)
+    login_page.click_login()
+
+    expect(page).to_have_url(re.compile(".*home"))
+
+    # logout
+    home_page = HomePage(page)
+    home_page.navigate()
+
+    home_page.click_logout()
+
+    expect(page).to_have_url(re.compile(".*login"))
+
+    # login again - should display MFA field again
+    login_page = LoginPage(page)
+    login_page.navigate()
+
+    login_page.provide_email(registered_mfa_user["email"])
+    login_page.provide_password(registered_mfa_user["password"])
+    login_page.click_login()
+
+    expect(login_page.otp_input).to_be_visible()
+    assert login_page.otp_input.get_attribute("required") is not None
