@@ -46,7 +46,7 @@
     <p v-if="error" class="error">{{ error }}</p>
     <p class="footer-link">
       Already have account?
-      <router-link to="/login">Login</router-link>
+      <router-link to="/login" data-testid="go-to-login">Login</router-link>
     </p>
   </section>
 </template>

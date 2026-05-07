@@ -23,7 +23,16 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    command: ["python", "-m", "pytest", "apps/api/tests", "-q"]
+    environment:
+      TEST_DATABASE_URL: postgresql+psycopg2://app:app@db:5432/appdb_test
+    command:
+      [
+        "sh",
+        "-c",
+        "python -m pip install --no-cache-dir -r /app/apps/api/requirements.txt && python -m pytest apps/api/tests -q",
+      ]
+    volumes:
+      - .:/app
     depends_on:
       - db
     profiles:
@@ -35,6 +44,25 @@ services:
       dockerfile: apps/web/Dockerfile
     ports:
       - "5173:5173"
+
+  e2e-test:
+    build:
+      context: .
+      dockerfile: e2e/Dockerfile
+    working_dir: /app
+    environment:
+      E2E_BASE_URL: http://web:5173
+      E2E_API_URL: http://api:8000
+      E2E_HEADLESS: "true"
+      PYTHONPATH: /app
+    command: ["python", "-m", "pytest", "-q", "e2e/tests"]
+    volumes:
+      - .:/app
+    depends_on:
+      - web
+      - api
+    profiles:
+      - test
 
 volumes:
   postgres_data:

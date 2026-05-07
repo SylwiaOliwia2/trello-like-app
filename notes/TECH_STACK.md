@@ -1,4 +1,4 @@
-# Tech stack and deployment (decision log)
+# Tech stack and deployment
 
 
 ## Stack
@@ -9,7 +9,7 @@
 | **Backend** | Postgres of SQLite, needed some tool for DB  versions management (ex. Django, alembic) |
 | **API** | DRF or FastAPI |
 | **CI / CD** | GitHub Actions |
-| **Auth** | JWT (or session); MFA later |
+| **Auth** | JWT (or session); MFA |
 
 No AWS stack, as AWS is more setup-demanding, but similar in testing. This app is focused on testing.
 
