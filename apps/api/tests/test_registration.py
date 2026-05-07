@@ -8,6 +8,7 @@ from apps.api.tests.helpers.login_helpers import _totp_secret_from_otpauth_url
 
 
 @pytest.mark.smoke
+@pytest.mark.API
 def test_register_without_mfa_returns_201(
     client: TestClient,
     db_session: Session,
@@ -30,6 +31,7 @@ def test_register_without_mfa_returns_201(
 
 
 @pytest.mark.smoke
+@pytest.mark.API
 def test_register_with_mfa_returns_otpauth_url(
     client: TestClient,
     db_session: Session,
@@ -75,6 +77,8 @@ def test_register_with_mfa_returns_otpauth_url(
     assert user.mfa_enabled is True
 
 
+@pytest.mark.regression
+@pytest.mark.API
 def test_register_the_same_email_twice_returns_400(
     client: TestClient,
     db_session: Session,

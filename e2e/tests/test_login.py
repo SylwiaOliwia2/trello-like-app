@@ -7,9 +7,11 @@ import pyotp
 
 from e2e.POM.login import LoginPage
 from e2e.POM.home import HomePage
-from e2e.tests.api_helpers import get_auth_me
+from e2e.tests.helpers.api_helpers import get_auth_me
 
 
+@pytest.mark.regression
+@pytest.mark.e2e
 def test_register_button_redirects_to_register_page(page: Page) -> None:
     login_page = LoginPage(page)
     login_page.navigate()
@@ -17,6 +19,8 @@ def test_register_button_redirects_to_register_page(page: Page) -> None:
     expect(page).to_have_url(re.compile(".*register"))
 
 
+@pytest.mark.regression
+@pytest.mark.e2e
 def test_wrong_email_format_displays_error_message(page: Page) -> None:
     login_page = LoginPage(page)
     login_page.navigate()
@@ -24,6 +28,9 @@ def test_wrong_email_format_displays_error_message(page: Page) -> None:
     assert login_page.email_input.get_attribute("required") is not None
 
 
+@pytest.mark.regression
+@pytest.mark.security
+@pytest.mark.e2e
 def test_login_password_is_masked(page: Page) -> None:
     login_page = LoginPage(page)
     login_page.navigate()    
@@ -31,6 +38,9 @@ def test_login_password_is_masked(page: Page) -> None:
     assert login_page.password_input.get_attribute("type") == "password"
 
 
+@pytest.mark.regression
+@pytest.mark.security
+@pytest.mark.e2e
 def test_not_authenticated_user_cannot_access_home_page(
     page: Page, e2e_api_url: str, api_session: requests.Session
 ) -> None:
@@ -43,6 +53,9 @@ def test_not_authenticated_user_cannot_access_home_page(
     assert resp.status_code == 401
 
 
+@pytest.mark.regression
+@pytest.mark.security
+@pytest.mark.e2e
 def test_session_token_is_stored_after_succesfull_login(
     page: Page, registered_user: dict[str, str]
 ) -> None:
@@ -62,6 +75,9 @@ def test_session_token_is_stored_after_succesfull_login(
     assert access_token is not None
 
 
+@pytest.mark.regression
+@pytest.mark.security
+@pytest.mark.e2e
 def test_wrong_password_does_not_allow_to_login(page: Page, registered_user) -> None:
     login_page = LoginPage(page)
     login_page.navigate()
@@ -75,6 +91,8 @@ def test_wrong_password_does_not_allow_to_login(page: Page, registered_user) -> 
 
 
 @pytest.mark.regression
+@pytest.mark.security
+@pytest.mark.e2e
 def test_MFA_is_required_for_MFA_users(page: Page, registered_mfa_user: dict[str, str]) -> None:
     login_page = LoginPage(page)
     login_page.navigate()
@@ -88,6 +106,8 @@ def test_MFA_is_required_for_MFA_users(page: Page, registered_mfa_user: dict[str
 
 
 @pytest.mark.regression
+@pytest.mark.security
+@pytest.mark.e2e
 def test_mfa_user_is_prompted_for_mfa_on_every_login(page: Page, registered_mfa_user: dict[str, str]):
     #login
     login_page = LoginPage(page)

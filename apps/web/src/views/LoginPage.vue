@@ -70,6 +70,10 @@ async function onLogin() {
     localStorage.setItem("auth_token", response.access_token);
     router.push("/home");
   } catch (err) {
+    if (err?.message === "MFA code required") {
+      mfaRequired.value = true;
+      return;
+    }
     error.value = err.message || "Login failed";
   }
 }
