@@ -42,6 +42,7 @@ def init_database_schema(ensure_test_database_exists: None) -> None:
 def db_session(init_database_schema: None) -> Generator[Session, None, None]:
     """One connection + outer transaction"""
     with engine.begin() as cleanup_conn:
+        # TODO: replace it with normal session, as it will remove real users on the prod!!!
         cleanup_conn.execute(text("TRUNCATE TABLE users RESTART IDENTITY CASCADE"))
 
     connection = engine.connect()

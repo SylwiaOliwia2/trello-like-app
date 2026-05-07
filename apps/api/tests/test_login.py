@@ -1,5 +1,6 @@
 import pyotp
 import pytest
+import time
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -99,6 +100,44 @@ def test_login_xss_attempt_is_rejected(client: TestClient) -> None:
         json=_login_json("xss.user@example.com", "<img src=x onerror=alert(1)>"),
     )
 
+    assert response.status_code == 401
+    data = response.json()
+    assert "access_token" not in data
+
+
+def test_expired_OTP_does_not_allow_to_login(
+    client: TestClient,
+    registered_user_with_mfa: User,
+) -> None:
+    otp = pyotp.TOTP(FIXED_MFA_SECRET_FOR_TESTS).at(int(time.time()) - 120)
+    response = client.post(
+        "/auth/login",
+        json=_login_json(SEEDED_USER_WITH_MFA_EMAIL, SEEDED_USER_PASSWORD, otp=otp),
+    )
+    assert response.status_code == 401
+    data = response.json()
+    assert "access_token" not in data
+
+
+def test_login_with_validated_OTP_does_not_allow_to_login(
+    client: TestClient,
+) -> None:
+    otp = pyotp.TOTP(FIXED_MFA_SECRET_FOR_TESTS).now()
+
+    # login first time with valid OTP - OK
+    response = client.post(
+        "/auth/login",
+        json=_login_json(SEEDED_USER_WITH_MFA_EMAIL, SEEDED_USER_PASSWORD, otp=otp),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+
+    # login second time with the same (not expired) OTP - NOT ALLOWED
+    response = client.post(
+        "/auth/login",
+        json=_login_json(SEEDED_USER_WITH_MFA_EMAIL, SEEDED_USER_PASSWORD, otp=otp),
+    )
     assert response.status_code == 401
     data = response.json()
     assert "access_token" not in data
