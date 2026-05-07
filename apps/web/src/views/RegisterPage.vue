@@ -39,7 +39,17 @@
       <h3>MFA setup</h3>
       <p>Scan QR in your authenticator app. This is shown only once.</p>
       <img v-if="mfaQrCodeDataUrl" :src="mfaQrCodeDataUrl" alt="MFA QR code" class="qr" />
-      <p class="hint">Then login and enter the 6-digit code.</p>
+      <p class="hint">Enter current 6-digit code to finish registration.</p>
+      <input
+        v-model="mfaOtp"
+        type="text"
+        maxlength="6"
+        placeholder="123456"
+        data-testid="register-mfa-otp"
+      />
+      <button type="button" @click="onConfirmMfa" data-testid="register-mfa-confirm">
+        Confirm MFA and create account
+      </button>
     </section>
 
     <p v-if="success" class="success">{{ success }}</p>
@@ -54,7 +64,7 @@
 <script setup>
 import { ref } from "vue";
 import QRCode from "qrcode";
-import { register } from "../lib/api";
+import { confirmRegister, register } from "../lib/api";
 
 const email = ref("");
 const password = ref("");
@@ -65,12 +75,16 @@ const success = ref("");
 const error = ref("");
 const showMfaSetup = ref(false);
 const mfaQrCodeDataUrl = ref("");
+const mfaOtp = ref("");
+const registrationToken = ref("");
 
 async function onRegister() {
   success.value = "";
   error.value = "";
   showMfaSetup.value = false;
   mfaQrCodeDataUrl.value = "";
+  mfaOtp.value = "";
+  registrationToken.value = "";
 
   if (password.value !== confirmPassword.value) {
     error.value = "Passwords do not match";
@@ -83,16 +97,41 @@ async function onRegister() {
       password: password.value,
       mfa_enabled: mfaEnabled.value,
     });
-    success.value = `Account created for ${response.email}`;
-    if (response.mfa_enabled && response.mfa_otpauth_url) {
+    if (response.registration_pending && response.mfa_enabled && response.mfa_otpauth_url && response.registration_token) {
+      registrationToken.value = response.registration_token;
       mfaQrCodeDataUrl.value = await QRCode.toDataURL(response.mfa_otpauth_url, {
         margin: 1,
         width: 220,
       });
       showMfaSetup.value = true;
+      success.value = "Pair MFA app and confirm with code to finish registration";
+      return;
     }
+    success.value = `Account created for ${response.email}`;
   } catch (err) {
     error.value = err.message || "Registration failed";
+  }
+}
+
+async function onConfirmMfa() {
+  success.value = "";
+  error.value = "";
+  if (!registrationToken.value) {
+    error.value = "Registration session expired. Please register again.";
+    return;
+  }
+
+  try {
+    const response = await confirmRegister({
+      registration_token: registrationToken.value,
+      otp: mfaOtp.value,
+    });
+    showMfaSetup.value = false;
+    registrationToken.value = "";
+    mfaOtp.value = "";
+    success.value = `Account created for ${response.email}`;
+  } catch (err) {
+    error.value = err.message || "MFA confirmation failed";
   }
 }
 </script>
