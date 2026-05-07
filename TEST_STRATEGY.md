@@ -75,7 +75,7 @@ This means:
 - user impact (the risk, that the user will not use the app) has medium weight
 - frequency of occurrence has the lowest weight
 
-### Test Cases- priorites:
+### Test Cases- priorites & traceability:
 1. Login & Registration: https://docs.google.com/spreadsheets/d/1J6nITKuYAP6KUIV8YzeCP11Y-t-90ft3ngzVW1SsWuI/edit?usp=sharing
 
 ## Exit Criteria

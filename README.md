@@ -23,19 +23,16 @@
 ~~- `curl -f http://127.0.0.1:8000/health`~~
 ~~- `docker compose down -v`~~
 
-## API tests
-- Run with Docker Compose:
-  - `docker compose --profile test run --rm api-test`
-- Detached app + test flow (CI-friendly):
-  - `docker compose up --build -d`
-  - `docker compose --profile test run --rm api-test`
-  - `docker compose down -v`
+## Tests
 
-## E2E tests (Docker Compose)
-- Run E2E in dedicated container:
-  - `docker compose up --build -d db api web`
-  - `docker compose --profile test run --rm e2e-test`
-  - `docker compose down -v`
+Tests to run before merge to branch:
+- `make test-dev` 
+- `make test-stage`
+- `make test-main`
+
+Other
+- `make test-api` - API only
+- `make test-e2e` - E2E only
 
 ## Development
 
