@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import os
 import secrets
+import time
 
 import jwt
 import pyotp
@@ -12,6 +13,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, EmailStr
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 app = FastAPI()
@@ -226,7 +228,18 @@ def get_current_user(
 
 @app.on_event("startup")
 def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
+    max_attempts = 15
+    delay_seconds = 1
+    last_error: Exception | None = None
+    for _ in range(max_attempts):
+        try:
+            Base.metadata.create_all(bind=engine)
+            return
+        except OperationalError as error:
+            last_error = error
+            time.sleep(delay_seconds)
+    if last_error:
+        raise last_error
 
 
 @app.get("/health", response_model=HealthResponse)

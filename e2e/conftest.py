@@ -10,6 +10,8 @@ import pyotp
 from playwright.sync_api import Browser, Page, Playwright, sync_playwright
 import requests
 
+from e2e.POM.home import HomePage
+
 
 @pytest.fixture(scope="session")
 def playwright() -> Generator[Playwright, None, None]:
@@ -125,6 +127,8 @@ def access_token(e2e_api_url: str, api_session: requests.Session, registered_use
 def logged_in_page(page: Page, access_token: str) -> Page:
     token_js = json.dumps(access_token)
     page.context.add_init_script(f'window.localStorage.setItem("auth_token", {token_js});')
-    page.goto("/home")
-    page.locator('[data-testid="home-title"]').wait_for()
+
+    home_page = HomePage(page)
+    home_page.navigate()
+    home_page.title.wait_for()
     return page

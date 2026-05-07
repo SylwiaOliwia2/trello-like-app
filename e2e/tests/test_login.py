@@ -129,7 +129,6 @@ def test_mfa_user_is_prompted_for_mfa_on_every_login(page: Page, registered_mfa_
 
     # logout
     home_page = HomePage(page)
-    home_page.navigate()
 
     home_page.click_logout()
 
