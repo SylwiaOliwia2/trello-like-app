@@ -28,13 +28,15 @@ def browser(playwright: Playwright) -> Generator[Browser, None, None]:
 
 
 @pytest.fixture(scope="function")
-def page(request: pytest.FixtureRequest, browser: Browser) -> Generator[Page, None, None]:
+def page(
+    request: pytest.FixtureRequest, browser: Browser
+) -> Generator[Page, None, None]:
     base_url = os.getenv("E2E_BASE_URL", "http://127.0.0.1:5173")
     context = browser.new_context(base_url=base_url)
     context.set_default_timeout(10_000)
     context.set_default_navigation_timeout(10_000)
     test_page = context.new_page()
-    request.node.page = test_page # NOTE: this line is required for the pytest hooks
+    request.node.page = test_page  # NOTE: this line is required for the pytest hooks
     yield test_page
     context.close()
 
@@ -52,7 +54,9 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]):
 
     screenshots_dir = Path("e2e/artifacts/screenshots")
     screenshots_dir.mkdir(parents=True, exist_ok=True)
-    screenshot_name = f"{item.name}_{uuid.uuid4()}.png".replace("/", "_").replace(" ", "_")
+    screenshot_name = f"{item.name}_{uuid.uuid4()}.png".replace("/", "_").replace(
+        " ", "_"
+    )
     page.screenshot(path=str(screenshots_dir / screenshot_name), full_page=True)
 
 
@@ -77,7 +81,9 @@ def registered_user(e2e_api_url: str, api_session: requests.Session) -> dict[str
 
 
 @pytest.fixture()
-def registered_mfa_user(e2e_api_url: str, api_session: requests.Session) -> dict[str, str]:
+def registered_mfa_user(
+    e2e_api_url: str, api_session: requests.Session
+) -> dict[str, str]:
     email = f"e2e_mfa_{uuid.uuid4().hex}@example.com"
     password = "StrongPass123!"
     payload = {"email": email, "password": password, "mfa_enabled": True}
@@ -109,10 +115,16 @@ def registered_mfa_user(e2e_api_url: str, api_session: requests.Session) -> dict
 
 
 @pytest.fixture()
-def access_token(e2e_api_url: str, api_session: requests.Session, registered_user: dict[str, str]) -> str:
+def access_token(
+    e2e_api_url: str, api_session: requests.Session, registered_user: dict[str, str]
+) -> str:
     resp = api_session.post(
         f"{e2e_api_url}/auth/login",
-        json={"email": registered_user["email"], "password": registered_user["password"], "otp": None},
+        json={
+            "email": registered_user["email"],
+            "password": registered_user["password"],
+            "otp": None,
+        },
         timeout=10,
     )
     resp.raise_for_status()
@@ -126,7 +138,9 @@ def access_token(e2e_api_url: str, api_session: requests.Session, registered_use
 @pytest.fixture()
 def logged_in_page(page: Page, access_token: str) -> Page:
     token_js = json.dumps(access_token)
-    page.context.add_init_script(f'window.localStorage.setItem("auth_token", {token_js});')
+    page.context.add_init_script(
+        f'window.localStorage.setItem("auth_token", {token_js});'
+    )
 
     home_page = HomePage(page)
     home_page.navigate()

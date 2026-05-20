@@ -69,7 +69,7 @@ def test_register_with_mfa_returns_otpauth_url(
     assert confirm.status_code == 201
 
     db_session.expire_all()
-    
+
     # User is registered after MFA confirmation
     user = get_user_by_email_for_test(db_session, str(mfa_payload["email"]))
     assert user is not None
@@ -84,7 +84,6 @@ def test_register_the_same_email_twice_returns_400(
     db_session: Session,
     no_mfa_payload: dict[str, object],
 ) -> None:
-    
     # REGISTER FIRST TIME - SUCCESSFULLY REGISTERED
     response = client.post("/auth/register", json=no_mfa_payload)
 
@@ -92,7 +91,9 @@ def test_register_the_same_email_twice_returns_400(
 
     db_session.expire_all()
 
-    assert get_user_by_email_for_test(db_session, str(no_mfa_payload["email"])) is not None
+    assert (
+        get_user_by_email_for_test(db_session, str(no_mfa_payload["email"])) is not None
+    )
 
     # REGISTER SECOND TIME - FAILS WITH 400
     response = client.post("/auth/register", json=no_mfa_payload)

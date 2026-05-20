@@ -41,7 +41,7 @@ def test_wrong_confirm_password_does_not_allow_to_register(
 ) -> None:
     email = "wrong_confirm_password@example.com"
     password = "password"
-    
+
     register_page = RegisterPage(page)
     register_page.navigate()
 
@@ -53,5 +53,7 @@ def test_wrong_confirm_password_does_not_allow_to_register(
     expect(page.get_by_text("Passwords do not match")).to_be_visible()
 
     # Check if the account does not exists in teh database
-    resp = post_auth_login(e2e_api_url=e2e_api_url, api_session=api_session, email=email, password=password)
+    resp = post_auth_login(
+        e2e_api_url=e2e_api_url, api_session=api_session, email=email, password=password
+    )
     assert resp.status_code == 401

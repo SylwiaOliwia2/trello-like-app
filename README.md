@@ -1,11 +1,13 @@
 # Minimal QA Demo App
 
 ## Stack
+
 - `apps/web`: Vue 3 + Vite
 - `apps/api`: FastAPI (`/health`)
 - `docker compose`: local and CI runtime
 
 ## Run locally (Docker only)
+
 1. Start app:
    - `docker compose up --build`
 2. Open:
@@ -14,8 +16,8 @@
 3. Stop:
    - `docker compose down`
 
-
 ## Run in CI (Docker Compose)
+
 **Note**: CI skipped as for now.
 
 ~~Use the same command in your CI job:~~
@@ -26,17 +28,32 @@
 ## Tests
 
 Tests to run before merge to branch:
-- `make test-dev` 
+
+- `make test-dev`
 - `make test-stage`
 - `make test-main`
 
 Other
+
 - `make test-api` - API only
 - `make test-e2e` - E2E only
 
 ## Development
 
+### Pre-commit hook (auto-format)
+
+One-time setup:
+
+- `python3 -m pip install --user pre-commit`
+- if `pre-commit` command is not found, add local Python bin to PATH:
+  - `export PATH="$HOME/.local/bin:$PATH"`
+- `pre-commit install`
+
+On every `git commit` auto-formats Python (ruff) + JS/Vue/JSON/MD (prettier).
+Run on all files manually: `pre-commit run --all-files`.
+
 ### Query the database locally
+
 Postgres runs in the `db` service (`app` / `app`).
 
 - **Shell inside the DB container** (no local `psql` install needed):

@@ -1,9 +1,13 @@
 <template>
   <section class="home">
     <h2 data-testid="home-title">Home</h2>
-    <p v-if="email" data-testid="home-email">Logged in as <strong>{{ email }}</strong></p>
+    <p v-if="email" data-testid="home-email">
+      Logged in as <strong>{{ email }}</strong>
+    </p>
     <p v-else>Loading profile...</p>
-    <button @click="logout" data-testid="logout-button" class="logout-btn">Logout</button>
+    <button @click="logout" data-testid="logout-button" class="logout-btn">
+      Logout
+    </button>
   </section>
 </template>
 
