@@ -1,0 +1,15 @@
+name: PR to stage
+
+on:
+  pull_request:
+    branches:
+      - stage
+
+jobs:
+  test-stage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run full regression + E2E + security
+        run: make test-stage
