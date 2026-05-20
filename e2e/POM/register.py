@@ -1,13 +1,14 @@
 import os
 
-from playwright.sync_api import Page
 
 class RegisterPage:
     def __init__(self, page):
         self.page = page
         self.email_input = page.locator('[data-testid="register-email"]')
         self.password_input = page.locator('[data-testid="register-password"]')
-        self.confirm_password_input = page.locator('[data-testid="register-password-confirm"]')
+        self.confirm_password_input = page.locator(
+            '[data-testid="register-password-confirm"]'
+        )
         self.register_button = page.locator('[data-testid="register-submit"]')
         self.mfa_enabled_checkbox = page.locator('[data-testid="register-mfa-enabled"]')
         self.login_link = page.locator('[data-testid="go-to-login"]')
@@ -27,7 +28,7 @@ class RegisterPage:
 
     def click_register(self):
         self.register_button.click()
-    
+
     def enable_MFA(self):
         self.mfa_enabled_checkbox.check()
 

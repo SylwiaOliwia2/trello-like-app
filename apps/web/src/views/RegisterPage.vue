@@ -3,7 +3,13 @@
     <h2>Register</h2>
 
     <form @submit.prevent="onRegister" class="form">
-      <input v-model="email" type="email" placeholder="Email" required data-testid="register-email" />
+      <input
+        v-model="email"
+        type="email"
+        placeholder="Email"
+        required
+        data-testid="register-email"
+      />
 
       <div class="password-row">
         <input
@@ -23,22 +29,41 @@
         data-testid="register-password-confirm"
       />
 
-      <button type="button" @click="showPassword = !showPassword" class="small-btn">
-          {{ showPassword ? "Hide" : "Show" }}
-        </button>
+      <button
+        type="button"
+        @click="showPassword = !showPassword"
+        class="small-btn"
+      >
+        {{ showPassword ? "Hide" : "Show" }}
+      </button>
 
       <label class="checkbox-row">
-        <input v-model="mfaEnabled" type="checkbox" data-testid="register-mfa-enabled" />
+        <input
+          v-model="mfaEnabled"
+          type="checkbox"
+          data-testid="register-mfa-enabled"
+        />
         Enable MFA (recommended)
       </label>
 
-      <button type="submit" data-testid="register-submit">Create account</button>
+      <button type="submit" data-testid="register-submit">
+        Create account
+      </button>
     </form>
 
-    <section v-if="showMfaSetup" class="mfa-card" data-testid="register-mfa-setup">
+    <section
+      v-if="showMfaSetup"
+      class="mfa-card"
+      data-testid="register-mfa-setup"
+    >
       <h3>MFA setup</h3>
       <p>Scan QR in your authenticator app. This is shown only once.</p>
-      <img v-if="mfaQrCodeDataUrl" :src="mfaQrCodeDataUrl" alt="MFA QR code" class="qr" />
+      <img
+        v-if="mfaQrCodeDataUrl"
+        :src="mfaQrCodeDataUrl"
+        alt="MFA QR code"
+        class="qr"
+      />
       <p class="hint">Enter current 6-digit code to finish registration.</p>
       <input
         v-model="mfaOtp"
@@ -47,7 +72,11 @@
         placeholder="123456"
         data-testid="register-mfa-otp"
       />
-      <button type="button" @click="onConfirmMfa" data-testid="register-mfa-confirm">
+      <button
+        type="button"
+        @click="onConfirmMfa"
+        data-testid="register-mfa-confirm"
+      >
         Confirm MFA and create account
       </button>
     </section>
@@ -97,14 +126,23 @@ async function onRegister() {
       password: password.value,
       mfa_enabled: mfaEnabled.value,
     });
-    if (response.registration_pending && response.mfa_enabled && response.mfa_otpauth_url && response.registration_token) {
+    if (
+      response.registration_pending &&
+      response.mfa_enabled &&
+      response.mfa_otpauth_url &&
+      response.registration_token
+    ) {
       registrationToken.value = response.registration_token;
-      mfaQrCodeDataUrl.value = await QRCode.toDataURL(response.mfa_otpauth_url, {
-        margin: 1,
-        width: 220,
-      });
+      mfaQrCodeDataUrl.value = await QRCode.toDataURL(
+        response.mfa_otpauth_url,
+        {
+          margin: 1,
+          width: 220,
+        },
+      );
       showMfaSetup.value = true;
-      success.value = "Pair MFA app and confirm with code to finish registration";
+      success.value =
+        "Pair MFA app and confirm with code to finish registration";
       return;
     }
     success.value = `Account created for ${response.email}`;

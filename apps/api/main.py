@@ -25,7 +25,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+psycopg2://app:app@db:5432/appdb")
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL", "postgresql+psycopg2://app:app@db:5432/appdb"
+)
 JWT_SECRET = "dev-secret-not-for-production"
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
@@ -46,7 +48,9 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     mfa_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
 
 class MfaCode(Base):
@@ -56,7 +60,9 @@ class MfaCode(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     otp_hash: Mapped[str] = mapped_column(String(64))
     used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
 
 class RegisterRequest(BaseModel):
@@ -137,14 +143,21 @@ def confirm_pending_registration(
 ) -> RegisterResponse:
     pending = pending_registrations.get(registration_token)
     if not pending:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired registration token")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired registration token",
+        )
 
     if db.query(User).filter(User.email == pending.email).first():
         pending_registrations.pop(registration_token, None)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists"
+        )
 
     if not pyotp.TOTP(pending.mfa_secret).verify(otp, valid_window=1):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OTP")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OTP"
+        )
 
     user = User(
         email=pending.email,
@@ -186,7 +199,9 @@ def verify_password(password: str, hashed: str) -> bool:
     except (ValueError, TypeError):
         return False
 
-    current_digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
+    current_digest = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), salt, 100000
+    )
     return hmac.compare_digest(current_digest, expected_digest)
 
 
@@ -208,7 +223,9 @@ def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except jwt.InvalidTokenError as error:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from error
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        ) from error
 
 
 def get_current_user(
@@ -216,13 +233,17 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token"
+        )
     token = authorization.split(" ", maxsplit=1)[1]
     payload = decode_token(token)
     user_id = payload.get("sub")
     user = db.get(User, int(user_id)) if user_id else None
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        )
     return user
 
 
@@ -247,12 +268,20 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok")
 
 
-@app.post("/auth/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> RegisterResponse:
+@app.post(
+    "/auth/register",
+    response_model=RegisterResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def register(
+    payload: RegisterRequest, db: Session = Depends(get_db)
+) -> RegisterResponse:
     cleanup_expired_pending_registrations()
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists"
+        )
 
     mfa_secret = pyotp.random_base32() if payload.mfa_enabled else None
     if payload.mfa_enabled and mfa_secret:
@@ -264,7 +293,9 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> Registe
             mfa_secret=mfa_secret,
             created_at=datetime.now(UTC),
         )
-        mfa_otpauth_url = pyotp.TOTP(mfa_secret).provisioning_uri(name=payload.email, issuer_name="task-manager-app")
+        mfa_otpauth_url = pyotp.TOTP(mfa_secret).provisioning_uri(
+            name=payload.email, issuer_name="task-manager-app"
+        )
         return RegisterResponse(
             email=payload.email,
             mfa_enabled=True,
@@ -284,7 +315,9 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> Registe
     db.refresh(user)
 
     mfa_otpauth_url = (
-        pyotp.TOTP(mfa_secret).provisioning_uri(name=payload.email, issuer_name="task-manager-app")
+        pyotp.TOTP(mfa_secret).provisioning_uri(
+            name=payload.email, issuer_name="task-manager-app"
+        )
         if mfa_secret
         else None
     )
@@ -296,20 +329,33 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> Registe
     )
 
 
-@app.post("/auth/register/confirm", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-def confirm_register(payload: ConfirmRegisterRequest, db: Session = Depends(get_db)) -> RegisterResponse:
+@app.post(
+    "/auth/register/confirm",
+    response_model=RegisterResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def confirm_register(
+    payload: ConfirmRegisterRequest, db: Session = Depends(get_db)
+) -> RegisterResponse:
     cleanup_expired_pending_registrations()
     return confirm_pending_registration(payload.registration_token, payload.otp, db)
 
 
-@app.post("/auth/register/mfa/confirm", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-def confirm_register_legacy(payload: LegacyConfirmRegisterRequest, db: Session = Depends(get_db)) -> RegisterResponse:
+@app.post(
+    "/auth/register/mfa/confirm",
+    response_model=RegisterResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def confirm_register_legacy(
+    payload: LegacyConfirmRegisterRequest, db: Session = Depends(get_db)
+) -> RegisterResponse:
     cleanup_expired_pending_registrations()
     matching_token = next(
         (
             token
             for token, pending in pending_registrations.items()
-            if pending.email == payload.email and verify_password(payload.password, pending.password_hash)
+            if pending.email == payload.email
+            and verify_password(payload.password, pending.password_hash)
         ),
         None,
     )
@@ -326,13 +372,21 @@ def confirm_register_legacy(payload: LegacyConfirmRegisterRequest, db: Session =
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+        )
 
     if user.mfa_enabled:
         if not payload.otp:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="MFA code required")
-        if not user.mfa_secret or not pyotp.TOTP(user.mfa_secret).verify(payload.otp, valid_window=1):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OTP")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="MFA code required"
+            )
+        if not user.mfa_secret or not pyotp.TOTP(user.mfa_secret).verify(
+            payload.otp, valid_window=1
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OTP"
+            )
 
         mfa_log = MfaCode(user_id=user.id, otp_hash=hash_otp(payload.otp), used=True)
         db.add(mfa_log)

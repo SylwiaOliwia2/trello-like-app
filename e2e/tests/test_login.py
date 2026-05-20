@@ -33,7 +33,7 @@ def test_wrong_email_format_displays_error_message(page: Page) -> None:
 @pytest.mark.e2e
 def test_login_password_is_masked(page: Page) -> None:
     login_page = LoginPage(page)
-    login_page.navigate()    
+    login_page.navigate()
 
     assert login_page.password_input.get_attribute("type") == "password"
 
@@ -93,7 +93,9 @@ def test_wrong_password_does_not_allow_to_login(page: Page, registered_user) -> 
 @pytest.mark.regression
 @pytest.mark.security
 @pytest.mark.e2e
-def test_MFA_is_required_for_MFA_users(page: Page, registered_mfa_user: dict[str, str]) -> None:
+def test_MFA_is_required_for_MFA_users(
+    page: Page, registered_mfa_user: dict[str, str]
+) -> None:
     login_page = LoginPage(page)
     login_page.navigate()
 
@@ -108,8 +110,10 @@ def test_MFA_is_required_for_MFA_users(page: Page, registered_mfa_user: dict[str
 @pytest.mark.regression
 @pytest.mark.security
 @pytest.mark.e2e
-def test_mfa_user_is_prompted_for_mfa_on_every_login(page: Page, registered_mfa_user: dict[str, str]):
-    #login
+def test_mfa_user_is_prompted_for_mfa_on_every_login(
+    page: Page, registered_mfa_user: dict[str, str]
+):
+    # login
     login_page = LoginPage(page)
     login_page.navigate()
 

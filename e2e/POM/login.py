@@ -1,8 +1,8 @@
 import os
 
-from playwright.sync_api import Page
 
 from e2e.POM.home import HomePage
+
 
 class LoginPage:
     def __init__(self, page):

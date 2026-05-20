@@ -3,7 +3,13 @@
     <h2>Login</h2>
 
     <form @submit.prevent="onLogin" class="form">
-      <input v-model="email" type="email" placeholder="Email" required data-testid="login-email" />
+      <input
+        v-model="email"
+        type="email"
+        placeholder="Email"
+        required
+        data-testid="login-email"
+      />
 
       <div class="password-row">
         <input
@@ -13,7 +19,11 @@
           required
           data-testid="login-password"
         />
-        <button type="button" @click="showPassword = !showPassword" class="small-btn">
+        <button
+          type="button"
+          @click="showPassword = !showPassword"
+          class="small-btn"
+        >
           {{ showPassword ? "Hide" : "Show" }}
         </button>
       </div>
@@ -32,11 +42,15 @@
       </button>
     </form>
 
-    <p v-if="mfaRequired" class="hint">Enter code from Google Authenticator / Authy / Microsoft Authenticator.</p>
+    <p v-if="mfaRequired" class="hint">
+      Enter code from Google Authenticator / Authy / Microsoft Authenticator.
+    </p>
     <p v-if="error" class="error">{{ error }}</p>
     <p class="footer-link">
       No account?
-      <router-link to="/register" data-testid="go-to-register">Register</router-link>
+      <router-link to="/register" data-testid="go-to-register"
+        >Register</router-link
+      >
     </p>
   </section>
 </template>

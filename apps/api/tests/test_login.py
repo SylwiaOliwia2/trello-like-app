@@ -14,7 +14,7 @@ from apps.api.tests.helpers.login_helpers import _login_json
 
 
 @pytest.mark.smoke
-@pytest.mark.API   
+@pytest.mark.API
 def test_login_without_mfa_returns_access_token(
     client: TestClient,
     registered_user_no_mfa: User,
@@ -50,8 +50,13 @@ def test_login_with_mfa_valid_otp_returns_access_token(
     assert "access_token" in data
 
     db_session.expire_all()
-    # test if succesfull login created exactly one MFA code  
-    assert db_session.query(MfaCode).filter(MfaCode.user_id == registered_user_with_mfa.id).count() == 1
+    # test if succesfull login created exactly one MFA code
+    assert (
+        db_session.query(MfaCode)
+        .filter(MfaCode.user_id == registered_user_with_mfa.id)
+        .count()
+        == 1
+    )
 
 
 @pytest.mark.smoke
@@ -165,13 +170,15 @@ def test_login_with_validated_OTP_does_not_allow_to_login(
 @pytest.mark.security
 @pytest.mark.API
 def test_login_with_wrong_OTP_does_not_allow_to_login(
-        client: TestClient,
+    client: TestClient,
 ) -> None:
     wrong_otp = "123456"
 
     response = client.post(
         "/auth/login",
-        json=_login_json(SEEDED_USER_WITH_MFA_EMAIL, SEEDED_USER_PASSWORD, otp=wrong_otp),
+        json=_login_json(
+            SEEDED_USER_WITH_MFA_EMAIL, SEEDED_USER_PASSWORD, otp=wrong_otp
+        ),
     )
     assert response.status_code == 401
     data = response.json()
