@@ -5,6 +5,11 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+  checks: write
+  pull-requests: write
+
 jobs:
   format-check:
     runs-on: ubuntu-latest
@@ -22,3 +27,61 @@ jobs:
 
       - name: Run smoke + security tests
         run: make test-main
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-main
+          path: reports/
+          if-no-files-found: warn
+
+      - name: Upload e2e screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots-main
+          path: e2e/artifacts/screenshots/
+          if-no-files-found: ignore
+
+      - name: Publish JUnit results in PR
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: "reports/junit/*.xml"
+          check_name: "JUnit report (main)"
+          fail_on_failure: true
+          require_tests: true
+
+      - name: Load Allure history
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
+
+      - name: Build Allure report
+        if: always()
+        uses: simple-elf/allure-report-action@v1.9
+        with:
+          allure_results: reports/allure-results
+          gh_pages: gh-pages
+          allure_history: allure-history
+          subfolder: main
+          keep_reports: 20
+
+      - name: Deploy Allure to GitHub Pages
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history
+          keep_files: true
+
+      - name: Link to Allure report
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          echo "### Allure report (main)" >> $GITHUB_STEP_SUMMARY
+          echo "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/main/" >> $GITHUB_STEP_SUMMARY
