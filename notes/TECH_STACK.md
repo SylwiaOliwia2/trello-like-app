@@ -46,7 +46,7 @@ No deployment, as this app focus on tests. Runtests in CI against emepheral app 
 |-----------|-------------|
 | `dev` | **Smoke tests** except Smoke E2E tests. Run on **every PR** - fast tests of crucial parts (API, optionally security). The build should + tests should take up to 10 - 15 min. Focus on integration: frontend, backend and db comunicate with each other. |
 | `stage` | Full regression + full E2E + security + performance (if they exists). Run on **every PR**. |
-| `main` |  **Smoke tests** for API, integration and E2E (happy paths). Security. Run on every commit. |
+| `main` |  **Smoke tests** for API, integration and E2E (happy paths). Security. Run on **every PR**. |
 
 Frequently changing code - test early (dev / stage).
 Stable code - later test.
