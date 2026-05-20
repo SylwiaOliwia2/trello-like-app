@@ -12,7 +12,9 @@ FIXED_MFA_SECRET_FOR_TESTS = "JBSWY3DPEHPK3PXP"
 
 
 def seed_baseline_users(session: Session) -> None:
-    """Insert the two baseline accounts; `session.commit()` becomes a savepoint release under test harness."""
+    """
+    Insert two test users into the database.
+    """
     session.add_all(
         [
             User(

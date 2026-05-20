@@ -3,10 +3,14 @@ from pathlib import Path
 from typing import Generator
 import uuid
 import json
+from urllib.parse import parse_qs, urlparse
 
 import pytest
+import pyotp
 from playwright.sync_api import Browser, Page, Playwright, sync_playwright
 import requests
+
+from e2e.POM.home import HomePage
 
 
 @pytest.fixture(scope="session")
@@ -80,10 +84,27 @@ def registered_mfa_user(e2e_api_url: str, api_session: requests.Session) -> dict
     resp = api_session.post(f"{e2e_api_url}/auth/register", json=payload, timeout=10)
     resp.raise_for_status()
     data = resp.json()
+    otpauth_url = str(data.get("mfa_otpauth_url") or "")
+    parsed = urlparse(otpauth_url)
+    secret = parse_qs(parsed.query).get("secret", [""])[0]
+    if not secret:
+        raise RuntimeError(f"Expected secret in mfa_otpauth_url, got: {data}")
+    otp = pyotp.TOTP(secret).now()
+
+    confirm_resp = api_session.post(
+        f"{e2e_api_url}/auth/register/confirm",
+        json={
+            "registration_token": data.get("registration_token"),
+            "otp": otp,
+        },
+        timeout=10,
+    )
+    confirm_resp.raise_for_status()
+
     return {
         "email": email,
         "password": password,
-        "mfa_otpauth_url": str(data.get("mfa_otpauth_url") or ""),
+        "mfa_otpauth_url": otpauth_url,
     }
 
 
@@ -106,6 +127,8 @@ def access_token(e2e_api_url: str, api_session: requests.Session, registered_use
 def logged_in_page(page: Page, access_token: str) -> Page:
     token_js = json.dumps(access_token)
     page.context.add_init_script(f'window.localStorage.setItem("auth_token", {token_js});')
-    page.goto("/home")
-    page.locator('[data-testid="home-title"]').wait_for()
+
+    home_page = HomePage(page)
+    home_page.navigate()
+    home_page.title.wait_for()
     return page
