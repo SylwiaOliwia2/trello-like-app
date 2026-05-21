@@ -29,34 +29,34 @@ test-dev: reports-dir
 	$(DC) down -v
 	$(DC) up --build -d db api
 	$(MAKE) wait-api
-	$(DC) --profile test run --rm api-test sh -c "$(API_PYTEST) -m 'smoke and not e2e'"
+	$(DC) --profile test run --build --rm api-test sh -c "$(API_PYTEST) -m 'smoke and not e2e'"
 
 # stage
 test-stage: reports-dir
 	$(DC) down -v
 	$(DC) up --build -d db api web
 	$(MAKE) wait-api
-	$(DC) --profile test run --rm api-test sh -c "$(API_PYTEST)"
-	$(DC) --profile test run --rm e2e-test sh -c "$(E2E_PYTEST)"
+	$(DC) --profile test run --build --rm api-test sh -c "$(API_PYTEST)"
+	$(DC) --profile test run --build --rm e2e-test sh -c "$(E2E_PYTEST)"
 
 # main
 test-main: reports-dir
 	$(DC) down -v
 	$(DC) up --build -d db api web
 	$(MAKE) wait-api
-	$(DC) --profile test run --rm api-test sh -c "$(API_PYTEST) -m 'smoke or security'"
-	$(DC) --profile test run --rm e2e-test sh -c "$(E2E_PYTEST) -m 'smoke or security'"
+	$(DC) --profile test run --build --rm api-test sh -c "$(API_PYTEST) -m 'smoke or security'"
+	$(DC) --profile test run --build --rm e2e-test sh -c "$(E2E_PYTEST) -m 'smoke or security'"
 
 test-api: reports-dir
 	$(DC) down -v
 	$(DC) up --build -d db api
 	$(MAKE) wait-api
-	$(DC) --profile test run --rm api-test sh -c "$(API_PYTEST)"
+	$(DC) --profile test run --build --rm api-test sh -c "$(API_PYTEST)"
 
 test-e2e: reports-dir
 	$(DC) down -v
 	$(DC) up --build -d db api web
 	$(MAKE) wait-api
-	$(DC) --profile test run --rm e2e-test sh -c "$(E2E_PYTEST)"
+	$(DC) --profile test run --build --rm e2e-test sh -c "$(E2E_PYTEST)"
 
 test-all: test-stage
