@@ -1,0 +1,87 @@
+name: PR to dev
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+  checks: write
+  pull-requests: write
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - uses: pre-commit/action@v3.0.1
+
+  test-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run smoke tests (API)
+        run: make test-dev
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-dev
+          path: reports/
+          if-no-files-found: warn
+
+      - name: Publish JUnit results in PR
+        if: always() && hashFiles('reports/junit/*.xml') != ''
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: "reports/junit/*.xml"
+          check_name: "JUnit report (dev)"
+          fail_on_failure: true
+          require_tests: true
+
+      - name: Load Allure history
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
+
+      - name: Set up Java for Allure
+        if: always() && hashFiles('reports/allure-results/*') != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Build Allure report
+        if: always() && hashFiles('reports/allure-results/*') != ''
+        run: |
+          if [ -d gh-pages/dev/history ]; then
+            mkdir -p reports/allure-results/history
+            cp -R gh-pages/dev/history/. reports/allure-results/history/
+          fi
+          npx --yes allure-commandline generate reports/allure-results --clean -o allure-report
+          mkdir -p allure-history/dev
+          cp -R allure-report/. allure-history/dev/
+
+      - name: Deploy Allure to GitHub Pages
+        if: always() && hashFiles('allure-history/dev/*') != '' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history
+          keep_files: true
+
+      - name: Link to Allure report
+        if: always() && hashFiles('allure-history/dev/*') != '' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          echo "### Allure report (dev)" >> $GITHUB_STEP_SUMMARY
+          echo "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/dev/" >> $GITHUB_STEP_SUMMARY
