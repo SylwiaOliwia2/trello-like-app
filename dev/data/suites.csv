@@ -1,0 +1,11 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"","3","test_login_sql_injection_attempt_is_rejected","apps.api.tests","2026-05-21","passed","2026-05-21","","test_login","",""
+"","3","test_login_xss_attempt_is_rejected","apps.api.tests","2026-05-21","passed","2026-05-21","","test_login","",""
+"","2","test_health_endpoint_returns_ok","apps.api.tests","2026-05-21","passed","2026-05-21","","test_health","",""
+"","26","test_register_without_mfa_returns_201","apps.api.tests","2026-05-21","passed","2026-05-21","","test_registration","",""
+"","33","test_login_with_mfa_valid_otp_returns_access_token","apps.api.tests","2026-05-21","passed","2026-05-21","","test_login","",""
+"","27","test_login_without_mfa_returns_access_token","apps.api.tests","2026-05-21","passed","2026-05-21","","test_login","",""
+"
+    Requires `POST /auth/register/mfa/confirm` (not implemented yet) to finalize registration.
+    ","48","test_register_with_mfa_returns_otpauth_url","apps.api.tests","2026-05-21","passed","2026-05-21","","test_registration","",""
+"","53","test_login_with_wrong_password_does_not_return_access_token","apps.api.tests","2026-05-21","passed","2026-05-21","","test_login","",""
