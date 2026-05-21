@@ -12,7 +12,15 @@ import pyotp
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, EmailStr
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, create_engine
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    create_engine,
+)
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
@@ -60,6 +68,32 @@ class MfaCode(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     otp_hash: Mapped[str] = mapped_column(String(64))
     used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class Board(Base):
+    __tablename__ = "boards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class BoardMembership(Base):
+    __tablename__ = "board_memberships"
+    __table_args__ = (
+        UniqueConstraint("board_id", "user_id", name="uq_board_membership"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    board_id: Mapped[int] = mapped_column(ForeignKey("boards.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    role: Mapped[str] = mapped_column(String(32))  # "owner" or "member"
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
@@ -405,3 +439,256 @@ def me(current_user: User = Depends(get_current_user)) -> CurrentUserResponse:
 @app.get("/protected")
 def protected(current_user: User = Depends(get_current_user)) -> dict[str, str]:
     return {"message": f"Hello {current_user.email}"}
+
+
+# --------------------- Boards ---------------------
+
+
+class BoardCreateRequest(BaseModel):
+    name: str
+
+
+class BoardSummary(BaseModel):
+    id: int
+    name: str
+    owner_id: int
+    role: str  # caller's role on this board
+
+
+class BoardMemberInfo(BaseModel):
+    user_id: int
+    email: str
+    role: str
+
+
+class BoardDetail(BaseModel):
+    id: int
+    name: str
+    owner_id: int
+    role: str
+    members: list[BoardMemberInfo]
+
+
+class UserSummary(BaseModel):
+    id: int
+    email: str
+
+
+class AddMemberRequest(BaseModel):
+    email: EmailStr
+
+
+def get_membership(db: Session, board_id: int, user_id: int) -> BoardMembership | None:
+    return (
+        db.query(BoardMembership)
+        .filter(
+            BoardMembership.board_id == board_id,
+            BoardMembership.user_id == user_id,
+        )
+        .first()
+    )
+
+
+def require_board_member(db: Session, board: Board, user: User) -> BoardMembership:
+    membership = get_membership(db, board.id, user.id)
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a board member",
+        )
+    return membership
+
+
+def require_board_owner(db: Session, board: Board, user: User) -> BoardMembership:
+    membership = require_board_member(db, board, user)
+    if membership.role != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the board owner can perform this action",
+        )
+    return membership
+
+
+def get_board_or_404(db: Session, board_id: int) -> Board:
+    board = db.get(Board, board_id)
+    if not board:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Board not found"
+        )
+    return board
+
+
+@app.get("/boards", response_model=list[BoardSummary])
+def list_boards(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> list[BoardSummary]:
+    rows = (
+        db.query(Board, BoardMembership)
+        .join(BoardMembership, BoardMembership.board_id == Board.id)
+        .filter(BoardMembership.user_id == current_user.id)
+        .order_by(Board.created_at.desc())
+        .all()
+    )
+    return [
+        BoardSummary(
+            id=board.id,
+            name=board.name,
+            owner_id=board.owner_id,
+            role=membership.role,
+        )
+        for board, membership in rows
+    ]
+
+
+@app.post("/boards", response_model=BoardSummary, status_code=status.HTTP_201_CREATED)
+def create_board(
+    payload: BoardCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BoardSummary:
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Board name is required"
+        )
+    board = Board(name=name, owner_id=current_user.id)
+    db.add(board)
+    db.flush()
+    db.add(BoardMembership(board_id=board.id, user_id=current_user.id, role="owner"))
+    db.commit()
+    db.refresh(board)
+    return BoardSummary(
+        id=board.id, name=board.name, owner_id=board.owner_id, role="owner"
+    )
+
+
+@app.get("/boards/{board_id}", response_model=BoardDetail)
+def get_board(
+    board_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BoardDetail:
+    board = get_board_or_404(db, board_id)
+    membership = require_board_member(db, board, current_user)
+
+    rows = (
+        db.query(BoardMembership, User)
+        .join(User, User.id == BoardMembership.user_id)
+        .filter(BoardMembership.board_id == board.id)
+        .order_by(BoardMembership.role.desc(), User.email.asc())
+        .all()
+    )
+    members = [
+        BoardMemberInfo(user_id=user.id, email=user.email, role=m.role)
+        for m, user in rows
+    ]
+    return BoardDetail(
+        id=board.id,
+        name=board.name,
+        owner_id=board.owner_id,
+        role=membership.role,
+        members=members,
+    )
+
+
+@app.delete("/boards/{board_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_board(
+    board_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    board = get_board_or_404(db, board_id)
+    require_board_owner(db, board, current_user)
+
+    db.query(BoardMembership).filter(BoardMembership.board_id == board.id).delete()
+    db.delete(board)
+    db.commit()
+
+
+@app.post(
+    "/boards/{board_id}/members",
+    response_model=BoardMemberInfo,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_board_member(
+    board_id: int,
+    payload: AddMemberRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BoardMemberInfo:
+    board = get_board_or_404(db, board_id)
+    require_board_owner(db, board, current_user)
+
+    target = db.query(User).filter(User.email == payload.email).first()
+    if not target:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    existing = get_membership(db, board.id, target.id)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already a board member",
+        )
+
+    membership = BoardMembership(board_id=board.id, user_id=target.id, role="member")
+    db.add(membership)
+    db.commit()
+    return BoardMemberInfo(user_id=target.id, email=target.email, role="member")
+
+
+@app.delete(
+    "/boards/{board_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+def remove_board_member(
+    board_id: int,
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    board = get_board_or_404(db, board_id)
+    require_board_owner(db, board, current_user)
+
+    if user_id == board.owner_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Owner cannot be removed from their own board",
+        )
+
+    membership = get_membership(db, board.id, user_id)
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Member not found"
+        )
+
+    db.delete(membership)
+    db.commit()
+
+
+@app.post("/boards/{board_id}/leave", status_code=status.HTTP_204_NO_CONTENT)
+def leave_board(
+    board_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    board = get_board_or_404(db, board_id)
+    membership = require_board_member(db, board, current_user)
+
+    if membership.role == "owner":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Owner cannot leave the board. Delete it instead.",
+        )
+
+    db.delete(membership)
+    db.commit()
+
+
+@app.get("/users", response_model=list[UserSummary])
+def list_users(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[UserSummary]:
+    users = db.query(User).order_by(User.email.asc()).all()
+    return [UserSummary(id=u.id, email=u.email) for u in users]

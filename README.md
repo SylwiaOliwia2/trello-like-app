@@ -22,10 +22,7 @@ Workflows under `.github/workflows/` run on PRs to `dev` / `stage` / `main`.
 
 Each run produces:
 
-- **JUnit XML** (`reports/junit/*.xml`) — uploaded as the `reports-<stage>` artifact and published as an inline PR check via `mikepenz/action-junit-report` (per-test annotations on failures).
-- **Allure results** (`reports/allure-results/`) — same artifact; HTML report is built by `simple-elf/allure-report-action` (with history) and deployed to GitHub Pages at `https://<owner>.github.io/<repo>/<stage>/`. Link is also printed in the workflow's job summary.
-
-One-time setup for Allure hosting: enable GitHub Pages on the repo, source = `gh-pages` branch.
+- **Allure results** are available at `https://sylwiaoliwia2.github.io/trello-like-app/<stage>/#`
 
 ## Tests
 
