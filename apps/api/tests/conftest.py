@@ -7,7 +7,8 @@ os.environ["DATABASE_URL"] = os.environ.get(
 )
 
 pytest_plugins = [
-    "apps.api.tests.fixtures.user_fixtures",
+    "apps.api.tests.fixtures.user_fixture",
+    "apps.api.tests.fixtures.board_fixture",
     "apps.api.tests.fixtures.login_fixture",
     "apps.api.tests.helpers.db_fixtures",
 ]
