@@ -39,6 +39,22 @@ Other
 
 ## Development
 
+### Run a single test
+
+Tests run inside the `test` profile containers. Override the pytest command to target one file, class, or test name. Make sure the app is up first (`docker compose up --build -d db api web`).
+
+API:
+
+- Single file: `docker compose --profile test run --rm api-test sh -c "python -m pytest apps/api/tests/test_board.py"`
+- Single test: `docker compose --profile test run --rm api-test sh -c "python -m pytest apps/api/tests/test_board.py::test_owner_can_add_member"`
+- By name match: `docker compose --profile test run --rm api-test sh -c "python -m pytest apps/api/tests -k add_member"`
+
+E2E:
+
+- Single file: `docker compose --profile test run --rm e2e-test sh -c "python -m pytest e2e/tests/test_board.py"`
+- Single test: `docker compose --profile test run --rm e2e-test sh -c "python -m pytest e2e/tests/test_board.py::test_user_sees_all_his_boards_on_the_home_page"`
+- By name match: `docker compose --profile test run --rm e2e-test sh -c "python -m pytest e2e/tests -k sees_all_his_boards"`
+
 ### Pre-commit hook (auto-format)
 
 One-time setup:

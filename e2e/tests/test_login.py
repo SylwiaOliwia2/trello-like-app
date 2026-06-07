@@ -7,7 +7,7 @@ import pyotp
 
 from e2e.POM.login import LoginPage
 from e2e.POM.home import HomePage
-from e2e.tests.helpers.api_helpers import get_auth_me
+from e2e.tests.helpers.api_login_helpers import get_auth_me
 
 
 @pytest.mark.regression
