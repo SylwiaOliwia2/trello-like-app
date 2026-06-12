@@ -13,15 +13,16 @@ from playwright.sync_api import (
     Playwright,
     sync_playwright,
     APIRequestContext,
+    APIResponse,
 )
 import requests
 
 from e2e.POM.home import HomePage
-from e2e.tests.helpers.api_login_helpers import post_auth_login
-from e2e.tests.fixtures.board_fixtures import (  # noqa: F401
-    api_create_board,
-    api_get_board,
-)
+
+pytest_plugins = [
+    "e2e.tests.fixtures.board_fixtures",
+    "e2e.tests.fixtures.login_fixtures",
+]
 
 
 @pytest.fixture(scope="session")
@@ -99,19 +100,14 @@ def make_user(
 
 @pytest.fixture()
 def make_user_with_token(
-    e2e_api_url: str,
-    api_session: requests.Session,
     make_user: Callable[..., dict[str, str]],
+    api_login: Callable[..., APIResponse],
 ) -> Callable[..., dict[str, str]]:
     def _make_user_with_token(password: str = "StrongPass123!") -> dict[str, str]:
         user = make_user(password=password)
-        resp = post_auth_login(
-            e2e_api_url=e2e_api_url,
-            api_session=api_session,
-            email=user["email"],
-            password=user["password"],
-        )
-        resp.raise_for_status()
+        resp = api_login(user["email"], user["password"])
+        if not resp.ok:
+            raise RuntimeError(f"Login failed: {resp.status} {resp.text()}")
         token = resp.json().get("access_token")
         if not token:
             raise RuntimeError(f"Expected access_token in response, got: {resp.json()}")

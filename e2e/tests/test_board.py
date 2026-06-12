@@ -1,36 +1,28 @@
 from typing import Callable
 
 import re
-import requests
 from playwright.sync_api import Page, expect, APIResponse
 import pytest
 
 from e2e.POM.board import BoardPage
 from e2e.POM.home import HomePage
-from e2e.tests.helpers.api_board_helpers import (
-    add_user_to_board,
-    get_board_member_id_by_email,
-)
 
 
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_user_sees_all_his_boards_on_the_home_page(
     logged_in_page: Page,
-    e2e_api_url: str,
-    api_session: requests.Session,
     access_token: str,
     registered_user: dict[str, str],
     make_user_with_token: Callable[..., dict[str, str]],
     api_create_board: Callable[..., APIResponse],
+    api_add_board_member: Callable[..., APIResponse],
 ) -> None:
     owned_board = api_create_board("Owned Board", token=access_token).json()
 
     other_user = make_user_with_token()
     member_board = api_create_board("Member Board", token=other_user["token"]).json()
-    add_user_to_board(
-        e2e_api_url,
-        api_session,
+    api_add_board_member(
         member_board["id"],
         registered_user["email"],
         token=other_user["token"],
@@ -94,8 +86,6 @@ def test_owner_can_cancel_board_deletion(
 @pytest.mark.e2e
 def test_deleted_board_disappears_from_home(
     logged_in_page: Page,
-    e2e_api_url: str,
-    api_session: requests.Session,
     access_token: str,
     api_create_board: Callable[..., APIResponse],
 ) -> None:
@@ -115,18 +105,15 @@ def test_deleted_board_disappears_from_home(
 @pytest.mark.e2e
 def test_deleted_board_disappears_from_member_home(
     logged_in_page: Page,
-    e2e_api_url: str,
-    api_session: requests.Session,
     access_token: str,
     make_user_with_token: Callable[..., dict[str, str]],
     make_logged_in_page: Callable[[str], Page],
     api_create_board: Callable[..., APIResponse],
+    api_add_board_member: Callable[..., APIResponse],
 ) -> None:
     member = make_user_with_token()
     board = api_create_board("Shared Board", token=access_token).json()
-    add_user_to_board(
-        e2e_api_url, api_session, board["id"], member["email"], token=access_token
-    )
+    api_add_board_member(board["id"], member["email"], token=access_token)
 
     member_page = make_logged_in_page(member["token"])
     member_home = HomePage(member_page)
@@ -146,18 +133,17 @@ def test_deleted_board_disappears_from_member_home(
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_removed_board_member_does_not_have_access_to_board(
-    e2e_api_url: str,
-    api_session: requests.Session,
     make_user_with_token: Callable[..., dict[str, str]],
     make_logged_in_page: Callable[[str], Page],
     api_create_board: Callable[..., APIResponse],
+    api_add_board_member: Callable[..., APIResponse],
 ) -> None:
     owner = make_user_with_token()
     board = api_create_board("Shared Board", token=owner["token"]).json()
 
     member = make_user_with_token()
-    member_id = add_user_to_board(
-        e2e_api_url, api_session, board["id"], member["email"], token=owner["token"]
+    member_id = api_add_board_member(
+        board["id"], member["email"], token=owner["token"]
     ).json()["user_id"]
 
     member_page = make_logged_in_page(member["token"])
@@ -186,10 +172,9 @@ def test_removed_board_member_does_not_have_access_to_board(
 @pytest.mark.e2e
 def test_owner_can_add_member_using_dropdown_list(
     make_logged_in_page: Callable[[str], Page],
-    e2e_api_url: str,
-    api_session: requests.Session,
     make_user_with_token: Callable[..., dict[str, str]],
     api_create_board: Callable[..., APIResponse],
+    get_board_member_id_by_email: Callable[..., int],
 ) -> None:
     owner = make_user_with_token()
     board = api_create_board("Shared Board", token=owner["token"]).json()
@@ -203,7 +188,7 @@ def test_owner_can_add_member_using_dropdown_list(
 
     # the member now has API access to the board
     member_id = get_board_member_id_by_email(
-        e2e_api_url, api_session, board["id"], member["email"], token=owner["token"]
+        board["id"], member["email"], token=owner["token"]
     )
     expect(board_page.member_item(member_id)).to_be_visible()
 
@@ -211,11 +196,10 @@ def test_owner_can_add_member_using_dropdown_list(
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_board_owner_sees_board_members_along_with_roles(
-    e2e_api_url: str,
-    api_session: requests.Session,
     make_user_with_token: Callable[..., dict[str, str]],
     make_logged_in_page: Callable[[str], Page],
     api_create_board: Callable[..., APIResponse],
+    get_board_member_id_by_email: Callable[..., int],
 ) -> None:
     owner = make_user_with_token()
     board = api_create_board("Shared Board", token=owner["token"]).json()
@@ -231,8 +215,6 @@ def test_board_owner_sees_board_members_along_with_roles(
 
     # TODO: shall front dev generate the same test-id's for all users? Then we can access them as .all() and compare values inside list (it will be easier for QA)
     member_1_id = get_board_member_id_by_email(
-        e2e_api_url,
-        api_session,
         board["id"],
         member_1["email"],
         token=member_1["token"],
@@ -242,8 +224,6 @@ def test_board_owner_sees_board_members_along_with_roles(
     expect(board_page.member_role(member_1_id)).to_have_text("member")
 
     member_2_id = get_board_member_id_by_email(
-        e2e_api_url,
-        api_session,
         board["id"],
         member_2["email"],
         token=member_2["token"],
@@ -253,7 +233,7 @@ def test_board_owner_sees_board_members_along_with_roles(
     expect(board_page.member_role(member_2_id)).to_have_text("member")
 
     owner_id = get_board_member_id_by_email(
-        e2e_api_url, api_session, board["id"], owner["email"], token=owner["token"]
+        board["id"], owner["email"], token=owner["token"]
     )
 
     expect(board_page.member_item(owner_id)).to_be_visible()
@@ -264,19 +244,16 @@ def test_board_owner_sees_board_members_along_with_roles(
 @pytest.mark.e2e
 def test_board_member_can_leave_the_board(
     make_logged_in_page: Callable[[str], Page],
-    e2e_api_url: str,
-    api_session: requests.Session,
     make_user_with_token: Callable[..., dict[str, str]],
     api_create_board: Callable[..., APIResponse],
     api_get_board: Callable[..., APIResponse],
+    api_add_board_member: Callable[..., APIResponse],
 ) -> None:
     owner = make_user_with_token()
     board = api_create_board("Shared Board", token=owner["token"]).json()
     member = make_user_with_token()
 
-    add_user_to_board(
-        e2e_api_url, api_session, board["id"], member["email"], token=owner["token"]
-    )
+    api_add_board_member(board["id"], member["email"], token=owner["token"])
 
     # user opens the board and leaves
     member_page = make_logged_in_page(member["token"])

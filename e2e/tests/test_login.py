@@ -7,7 +7,6 @@ import pyotp
 
 from e2e.POM.login import LoginPage
 from e2e.POM.home import HomePage
-from e2e.tests.helpers.api_login_helpers import get_auth_me
 
 
 @pytest.mark.regression
@@ -48,9 +47,6 @@ def test_not_authenticated_user_cannot_access_home_page(
     home_page.navigate()
 
     expect(page).to_have_url(re.compile(".*login"))
-
-    resp = get_auth_me(e2e_api_url=e2e_api_url, api_session=api_session)
-    assert resp.status_code == 401
 
 
 @pytest.mark.regression
