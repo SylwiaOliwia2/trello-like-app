@@ -7,11 +7,21 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 import pyotp
-from playwright.sync_api import Browser, Page, Playwright, sync_playwright
+from playwright.sync_api import (
+    Browser,
+    Page,
+    Playwright,
+    sync_playwright,
+    APIRequestContext,
+)
 import requests
 
 from e2e.POM.home import HomePage
 from e2e.tests.helpers.api_login_helpers import post_auth_login
+from e2e.tests.fixtures.board_fixtures import (  # noqa: F401
+    api_create_board,
+    api_get_board,
+)
 
 
 @pytest.fixture(scope="session")
@@ -212,3 +222,15 @@ def make_logged_in_page(
 
     for context in contexts:
         context.close()
+
+
+@pytest.fixture(scope="session")
+def api_request_context(
+    e2e_api_url: str,
+    playwright: Playwright,
+) -> Generator[APIRequestContext, None, None]:
+    request_context = playwright.request.new_context(
+        base_url=f"{e2e_api_url}",
+    )
+    yield request_context
+    request_context.dispose()
