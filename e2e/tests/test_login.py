@@ -1,7 +1,6 @@
 import re
 from typing import Callable
 from urllib.parse import parse_qs, urlparse
-import requests
 from playwright.sync_api import Page, expect
 import pytest
 import pyotp
@@ -41,9 +40,7 @@ def test_login_password_is_masked(page: Page) -> None:
 @pytest.mark.regression
 @pytest.mark.security
 @pytest.mark.e2e
-def test_not_authenticated_user_cannot_access_home_page(
-    page: Page, e2e_api_url: str, api_session: requests.Session
-) -> None:
+def test_not_authenticated_user_cannot_access_home_page(page: Page) -> None:
     home_page = HomePage(page)
     home_page.navigate()
 
