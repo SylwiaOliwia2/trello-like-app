@@ -39,6 +39,14 @@ def browser(playwright: Playwright) -> Generator[Browser, None, None]:
     browser_instance.close()
 
 
+def _register_page_for_screenshots(request: pytest.FixtureRequest, page: Page) -> None:
+    pages = getattr(request.node, "pages", None)
+    if pages is None:
+        pages = []
+        request.node.pages = pages
+    pages.append(page)
+
+
 @pytest.fixture(scope="function")
 def page(
     request: pytest.FixtureRequest, browser: Browser
@@ -48,7 +56,7 @@ def page(
     context.set_default_timeout(10_000)
     context.set_default_navigation_timeout(10_000)
     test_page = context.new_page()
-    request.node.page = test_page  # NOTE: this line is required for the pytest hooks
+    _register_page_for_screenshots(request, test_page)
     yield test_page
     context.close()
 
@@ -60,16 +68,21 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]):
     if report.when != "call" or report.passed:
         return
 
-    page = getattr(item, "page", None)
-    if page is None:
+    pages = getattr(item, "pages", None) or []
+    if not pages:
         return
 
     screenshots_dir = Path("e2e/artifacts/screenshots")
     screenshots_dir.mkdir(parents=True, exist_ok=True)
-    screenshot_name = f"{item.name}_{uuid.uuid4()}.png".replace("/", "_").replace(
-        " ", "_"
-    )
-    page.screenshot(path=str(screenshots_dir / screenshot_name), full_page=True)
+    for index, page in enumerate(pages):
+        screenshot_name = f"{item.name}_{index}_{uuid.uuid4()}.png".replace(
+            "/", "_"
+        ).replace(" ", "_")
+        try:
+            page.screenshot(path=str(screenshots_dir / screenshot_name), full_page=True)
+        except Exception:
+            # page/context may already be closed - skip it
+            pass
 
 
 @pytest.fixture(scope="session")
@@ -152,6 +165,7 @@ def registered_mfa_user(
 
 @pytest.fixture()
 def make_logged_in_page(
+    request: pytest.FixtureRequest,
     browser: Browser,
 ) -> Generator[Callable[[str], Page], None, None]:
     base_url = os.getenv("E2E_BASE_URL", "http://127.0.0.1:5173")
@@ -167,6 +181,7 @@ def make_logged_in_page(
         )
         contexts.append(context)
         new_page = context.new_page()
+        _register_page_for_screenshots(request, new_page)
 
         home_page = HomePage(new_page)
         home_page.navigate()
