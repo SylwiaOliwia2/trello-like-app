@@ -10,6 +10,8 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 
 from apps.api.main import Base, app, engine, get_db
+from apps.api.tests.fixtures.user_fixture import seed_baseline_users
+from apps.api.tests.fixtures.board_fixture import seed_board_per_user
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -40,11 +42,6 @@ def init_database_schema(ensure_test_database_exists: None) -> None:
 
 @pytest.fixture()
 def db_session(init_database_schema: None) -> Generator[Session, None, None]:
-    """One connection + outer transaction"""
-    with engine.begin() as cleanup_conn:
-        # TODO: replace it with normal session, as it will remove real users on the prod!!!
-        cleanup_conn.execute(text("TRUNCATE TABLE users RESTART IDENTITY CASCADE"))
-
     connection = engine.connect()
     transaction = connection.begin()
     session = Session(
@@ -53,10 +50,9 @@ def db_session(init_database_schema: None) -> Generator[Session, None, None]:
         autoflush=False,
         expire_on_commit=False,
     )
-    # Imported here so pytest can load `user_fixtures` as a plugin first
-    from apps.api.tests.fixtures.user_fixtures import seed_baseline_users
-
     seed_baseline_users(session)
+    seed_board_per_user(session)
+
     try:
         yield session
     finally:

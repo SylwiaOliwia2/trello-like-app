@@ -5,7 +5,7 @@ from playwright.sync_api import Page, expect
 import pytest
 
 from e2e.POM.register import RegisterPage
-from e2e.tests.helpers.api_helpers import post_auth_login
+from e2e.tests.helpers.api_login_helpers import post_auth_login
 
 
 @pytest.mark.regression

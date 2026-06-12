@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Generator
+from typing import Callable, Generator
 import uuid
 import json
 from urllib.parse import parse_qs, urlparse
@@ -11,6 +11,7 @@ from playwright.sync_api import Browser, Page, Playwright, sync_playwright
 import requests
 
 from e2e.POM.home import HomePage
+from e2e.tests.helpers.api_login_helpers import post_auth_login
 
 
 @pytest.fixture(scope="session")
@@ -71,13 +72,49 @@ def api_session() -> requests.Session:
 
 
 @pytest.fixture()
-def registered_user(e2e_api_url: str, api_session: requests.Session) -> dict[str, str]:
-    email = f"e2e_{uuid.uuid4().hex}@example.com"
-    password = "StrongPass123!"
-    payload = {"email": email, "password": password, "mfa_enabled": False}
-    resp = api_session.post(f"{e2e_api_url}/auth/register", json=payload, timeout=10)
-    resp.raise_for_status()
-    return {"email": email, "password": password}
+def make_user(
+    e2e_api_url: str, api_session: requests.Session
+) -> Callable[..., dict[str, str]]:
+    def _make_user(password: str = "StrongPass123!") -> dict[str, str]:
+        email = f"e2e_{uuid.uuid4().hex}@example.com"
+        payload = {"email": email, "password": password, "mfa_enabled": False}
+        resp = api_session.post(
+            f"{e2e_api_url}/auth/register", json=payload, timeout=10
+        )
+        resp.raise_for_status()
+        return {"id": id, "email": email, "password": password}
+
+    return _make_user
+
+
+@pytest.fixture()
+def make_user_with_token(
+    e2e_api_url: str,
+    api_session: requests.Session,
+    make_user: Callable[..., dict[str, str]],
+) -> Callable[..., dict[str, str]]:
+    def _make_user_with_token(password: str = "StrongPass123!") -> dict[str, str]:
+        user = make_user(password=password)
+        resp = post_auth_login(
+            e2e_api_url=e2e_api_url,
+            api_session=api_session,
+            email=user["email"],
+            password=user["password"],
+        )
+        resp.raise_for_status()
+        token = resp.json().get("access_token")
+        if not token:
+            raise RuntimeError(f"Expected access_token in response, got: {resp.json()}")
+        return {**user, "token": str(token)}
+
+    return _make_user_with_token
+
+
+@pytest.fixture()
+def registered_user(
+    make_user: Callable[..., dict[str, str]],
+) -> dict[str, str]:
+    return make_user()
 
 
 @pytest.fixture()
@@ -146,3 +183,32 @@ def logged_in_page(page: Page, access_token: str) -> Page:
     home_page.navigate()
     home_page.title.wait_for()
     return page
+
+
+@pytest.fixture()
+def make_logged_in_page(
+    browser: Browser,
+) -> Generator[Callable[[str], Page], None, None]:
+    base_url = os.getenv("E2E_BASE_URL", "http://127.0.0.1:5173")
+    contexts = []
+
+    def _make_logged_in_page(token: str) -> Page:
+        context = browser.new_context(base_url=base_url)
+        context.set_default_timeout(10_000)
+        context.set_default_navigation_timeout(10_000)
+        token_js = json.dumps(token)
+        context.add_init_script(
+            f'window.localStorage.setItem("auth_token", {token_js});'
+        )
+        contexts.append(context)
+        new_page = context.new_page()
+
+        home_page = HomePage(new_page)
+        home_page.navigate()
+        home_page.title.wait_for()
+        return new_page
+
+    yield _make_logged_in_page
+
+    for context in contexts:
+        context.close()
