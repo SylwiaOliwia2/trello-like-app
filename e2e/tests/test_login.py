@@ -1,4 +1,5 @@
 import re
+from typing import Callable
 from urllib.parse import parse_qs, urlparse
 import requests
 from playwright.sync_api import Page, expect
@@ -53,16 +54,17 @@ def test_not_authenticated_user_cannot_access_home_page(
 @pytest.mark.security
 @pytest.mark.e2e
 def test_session_token_is_stored_after_succesfull_login(
-    page: Page, registered_user: dict[str, str]
+    page: Page, make_user: Callable[..., dict[str, str]]
 ) -> None:
+    user = make_user()
     login_page = LoginPage(page)
     login_page.navigate()
 
     access_token = page.evaluate("() => window.localStorage.getItem('auth_token')")
     assert access_token is None
 
-    login_page.provide_email(registered_user["email"])
-    login_page.provide_password(registered_user["password"])
+    login_page.provide_email(user["email"])
+    login_page.provide_password(user["password"])
     login_page.click_login()
 
     expect(page).to_have_url(re.compile(".*home"))
@@ -74,11 +76,14 @@ def test_session_token_is_stored_after_succesfull_login(
 @pytest.mark.regression
 @pytest.mark.security
 @pytest.mark.e2e
-def test_wrong_password_does_not_allow_to_login(page: Page, registered_user) -> None:
+def test_wrong_password_does_not_allow_to_login(
+    page: Page, make_user: Callable[..., dict[str, str]]
+) -> None:
+    user = make_user()
     login_page = LoginPage(page)
     login_page.navigate()
 
-    login_page.provide_email(registered_user["email"])
+    login_page.provide_email(user["email"])
     login_page.provide_password("WRONG_PASSWORD")
     login_page.click_login()
 

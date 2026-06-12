@@ -117,13 +117,6 @@ def make_user_with_token(
 
 
 @pytest.fixture()
-def registered_user(
-    make_user: Callable[..., dict[str, str]],
-) -> dict[str, str]:
-    return make_user()
-
-
-@pytest.fixture()
 def registered_mfa_user(
     e2e_api_url: str, api_session: requests.Session
 ) -> dict[str, str]:
@@ -155,40 +148,6 @@ def registered_mfa_user(
         "password": password,
         "mfa_otpauth_url": otpauth_url,
     }
-
-
-@pytest.fixture()
-def access_token(
-    e2e_api_url: str, api_session: requests.Session, registered_user: dict[str, str]
-) -> str:
-    resp = api_session.post(
-        f"{e2e_api_url}/auth/login",
-        json={
-            "email": registered_user["email"],
-            "password": registered_user["password"],
-            "otp": None,
-        },
-        timeout=10,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    token = data.get("access_token")
-    if not token:
-        raise RuntimeError(f"Expected access_token in response, got: {data}")
-    return str(token)
-
-
-@pytest.fixture()
-def logged_in_page(page: Page, access_token: str) -> Page:
-    token_js = json.dumps(access_token)
-    page.context.add_init_script(
-        f'window.localStorage.setItem("auth_token", {token_js});'
-    )
-
-    home_page = HomePage(page)
-    home_page.navigate()
-    home_page.title.wait_for()
-    return page
 
 
 @pytest.fixture()

@@ -11,25 +11,24 @@ from e2e.POM.home import HomePage
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_user_sees_all_his_boards_on_the_home_page(
-    logged_in_page: Page,
-    access_token: str,
-    registered_user: dict[str, str],
     make_user_with_token: Callable[..., dict[str, str]],
+    make_logged_in_page: Callable[[str], Page],
     api_create_board: Callable[..., APIResponse],
     api_add_board_member: Callable[..., APIResponse],
 ) -> None:
-    owned_board = api_create_board("Owned Board", token=access_token).json()
+    owner = make_user_with_token()
+    owned_board = api_create_board("Owned Board", token=owner["token"]).json()
 
     other_user = make_user_with_token()
     member_board = api_create_board("Member Board", token=other_user["token"]).json()
     api_add_board_member(
         member_board["id"],
-        registered_user["email"],
+        owner["email"],
         token=other_user["token"],
     )
 
-    page = logged_in_page
-    home_page = HomePage(page)
+    owner_page = make_logged_in_page(owner["token"])
+    home_page = HomePage(owner_page)
     home_page.navigate()
 
     expect(home_page.board_link(owned_board["id"])).to_be_visible()
@@ -39,14 +38,15 @@ def test_user_sees_all_his_boards_on_the_home_page(
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_delete_board_asks_for_confirmation_first(
-    logged_in_page: Page,
-    access_token: str,
+    make_user_with_token: Callable[..., dict[str, str]],
+    make_logged_in_page: Callable[[str], Page],
     api_create_board: Callable[..., APIResponse],
     api_get_board: Callable[..., APIResponse],
 ) -> None:
-    board = api_create_board("Board To Keep", token=access_token).json()
+    owner = make_user_with_token()
+    board = api_create_board("Board To Keep", token=owner["token"]).json()
 
-    board_page = BoardPage(logged_in_page)
+    board_page = BoardPage(make_logged_in_page(owner["token"]))
     board_page.navigate(board["id"])
     board_page.open_delete_confirmation()
 
@@ -54,7 +54,7 @@ def test_delete_board_asks_for_confirmation_first(
     expect(board_page.cancel_delete_button).to_be_visible()
 
     # confirm, that the board is NOT deleted yet
-    response = api_get_board(board["id"], token=access_token)
+    response = api_get_board(board["id"], token=owner["token"])
 
     assert response.status == 200
 
@@ -62,14 +62,15 @@ def test_delete_board_asks_for_confirmation_first(
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_owner_can_cancel_board_deletion(
-    logged_in_page: Page,
-    access_token: str,
+    make_user_with_token: Callable[..., dict[str, str]],
+    make_logged_in_page: Callable[[str], Page],
     api_create_board: Callable[..., APIResponse],
     api_get_board: Callable[..., APIResponse],
 ) -> None:
-    board = api_create_board("Board To Keep", token=access_token).json()
+    owner = make_user_with_token()
+    board = api_create_board("Board To Keep", token=owner["token"]).json()
 
-    board_page = BoardPage(logged_in_page)
+    board_page = BoardPage(make_logged_in_page(owner["token"]))
     board_page.navigate(board["id"])
     board_page.open_delete_confirmation()
     board_page.cancel_delete()
@@ -77,7 +78,7 @@ def test_owner_can_cancel_board_deletion(
     expect(board_page.delete_confirm_popup).not_to_be_visible()
 
     # confirm, that the board is NOT deleted
-    response = api_get_board(board["id"], token=access_token)
+    response = api_get_board(board["id"], token=owner["token"])
 
     assert response.status == 200
 
@@ -85,45 +86,47 @@ def test_owner_can_cancel_board_deletion(
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_deleted_board_disappears_from_home(
-    logged_in_page: Page,
-    access_token: str,
+    make_user_with_token: Callable[..., dict[str, str]],
+    make_logged_in_page: Callable[[str], Page],
     api_create_board: Callable[..., APIResponse],
 ) -> None:
-    board = api_create_board("Board To Delete", token=access_token).json()
+    owner = make_user_with_token()
+    board = api_create_board("Board To Delete", token=owner["token"]).json()
 
-    board_page = BoardPage(logged_in_page)
+    owner_page = make_logged_in_page(owner["token"])
+    board_page = BoardPage(owner_page)
     board_page.navigate(board["id"])
     board_page.delete_board()
 
-    expect(logged_in_page).to_have_url(re.compile(".*home"))
+    expect(owner_page).to_have_url(re.compile(".*home"))
 
-    home_page = HomePage(logged_in_page)
+    home_page = HomePage(owner_page)
     expect(home_page.board_link(board["id"])).not_to_be_visible()
 
 
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_deleted_board_disappears_from_member_home(
-    logged_in_page: Page,
-    access_token: str,
     make_user_with_token: Callable[..., dict[str, str]],
     make_logged_in_page: Callable[[str], Page],
     api_create_board: Callable[..., APIResponse],
     api_add_board_member: Callable[..., APIResponse],
 ) -> None:
+    owner = make_user_with_token()
     member = make_user_with_token()
-    board = api_create_board("Shared Board", token=access_token).json()
-    api_add_board_member(board["id"], member["email"], token=access_token)
+    board = api_create_board("Shared Board", token=owner["token"]).json()
+    api_add_board_member(board["id"], member["email"], token=owner["token"])
 
     member_page = make_logged_in_page(member["token"])
     member_home = HomePage(member_page)
     expect(member_home.board_link(board["id"])).to_be_visible()
 
     # owner deletes the board
-    board_page = BoardPage(logged_in_page)
+    owner_page = make_logged_in_page(owner["token"])
+    board_page = BoardPage(owner_page)
     board_page.navigate(board["id"])
     board_page.delete_board()
-    expect(logged_in_page).to_have_url(re.compile(".*home"))
+    expect(owner_page).to_have_url(re.compile(".*home"))
 
     # the board disappears from the member's home page
     member_home.navigate()
