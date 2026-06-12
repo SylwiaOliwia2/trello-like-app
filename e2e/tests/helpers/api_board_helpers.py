@@ -44,3 +44,15 @@ def get_board(
         headers=headers,
         timeout=10,
     )
+
+
+def get_board_member_id_by_email(
+    e2e_api_url: str,
+    api_session: requests.Session,
+    board_id: int,
+    email: str,
+    token: str | None = None,
+) -> int:
+    response = get_board(e2e_api_url, api_session, board_id, token=token)
+    response.raise_for_status()
+    return next(m["user_id"] for m in response.json()["members"] if m["email"] == email)

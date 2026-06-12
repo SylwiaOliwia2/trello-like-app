@@ -82,7 +82,7 @@ def make_user(
             f"{e2e_api_url}/auth/register", json=payload, timeout=10
         )
         resp.raise_for_status()
-        return {"email": email, "password": password}
+        return {"id": id, "email": email, "password": password}
 
     return _make_user
 

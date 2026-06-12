@@ -7,10 +7,12 @@ class BoardPage:
         self.page = page
         self.back_button = page.locator('[data-testid="back-to-home"]')
         self.board_name = page.locator('[data-testid="board-name"]')
+        self.board_load_error = page.locator('[data-testid="board-load-error"]')
         self.members_list = page.locator('[data-testid="members-list"]')
         self.add_member_button = page.locator('[data-testid="add-member-submit"]')
         self.new_member_dropdown = page.locator('[data-testid="add-member-select"]')
         self.delete_board_button = page.locator('[data-testid="delete-board"]')
+        self.leave_board_button = page.locator('[data-testid="leave-board"]')
         self.delete_confirm_popup = page.locator('[data-testid="delete-board-confirm"]')
         self.confirm_delete_button = page.locator(
             '[data-testid="delete-board-confirm-yes"]'
@@ -32,15 +34,25 @@ class BoardPage:
     def cancel_delete(self):
         self.cancel_delete_button.click()
 
-    def add_board_member(self):
-        pass
+    def add_board_member(self, email: str):
+        self.new_member_dropdown.select_option(value=email)
+        self.add_member_button.click()
 
-    def remove_board_member(self):
-        pass
+    def member_item(self, user_id: int):
+        return self.page.locator(f'[data-testid="member-item-{user_id}"]')
+
+    def member_role(self, user_id: int):
+        return self.page.locator(f'[data-testid="member-role-{user_id}"]')
+
+    def remove_member_button(self, user_id: int):
+        return self.page.locator(f'[data-testid="remove-member-{user_id}"]')
+
+    def remove_board_member(self, user_id: int):
+        self.remove_member_button(user_id).click()
 
     def delete_board(self):
         self.open_delete_confirmation()
         self.confirm_delete()
 
     def remove_myself_from_the_board(self):
-        pass
+        self.leave_board_button.click()
