@@ -1,5 +1,5 @@
 import os
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 
 class BoardPage:
@@ -37,6 +37,8 @@ class BoardPage:
     def add_board_member(self, email: str):
         self.new_member_dropdown.select_option(value=email)
         self.add_member_button.click()
+        # wait for the member to be added. Otherwise may overlap when adding multiple users one after another.
+        expect(self.add_member_button).to_be_disabled()
 
     def member_item(self, user_id: int):
         return self.page.locator(f'[data-testid="member-item-{user_id}"]')
