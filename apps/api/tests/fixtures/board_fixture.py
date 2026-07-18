@@ -1,23 +1,43 @@
+from collections.abc import Generator
+
+import pytest
 from sqlalchemy.orm import Session
 
+from apps.api.main import User
 from apps.api.models import Board, BoardMembership
-from apps.api.tests.fixtures.user_fixture import BOARD_USER_EMAILS
-from apps.api.tests.helpers.login_helpers import get_user_by_email_for_test
 
 
-def seed_board_per_user(
-    session: Session, board_user_email_list: list[str] = BOARD_USER_EMAILS
-) -> None:
-    """
-    Seed one empty board per board user (that user as the owner).
-    """
-    for email in board_user_email_list:
-        owner = get_user_by_email_for_test(session, email)
-        assert owner is not None, f"seeded user missing: {email}"
-
-        board = Board(name=f"{owner.id}_owner_id_board", owner_id=owner.id)
-        session.add(board)
-        session.flush()
-        session.add(BoardMembership(board_id=board.id, user_id=owner.id, role="owner"))
-
+def _delete_boards(session: Session, board_ids: list[int]) -> None:
+    if not board_ids:
+        return
+    session.query(BoardMembership).filter(
+        BoardMembership.board_id.in_(board_ids)
+    ).delete(synchronize_session=False)
+    session.query(Board).filter(Board.id.in_(board_ids)).delete(
+        synchronize_session=False
+    )
     session.commit()
+
+
+@pytest.fixture()
+def owned_boards(
+    db_session: Session, board_users: list[User]
+) -> Generator[list[Board], None, None]:
+    """
+    Create one empty board per board user (owner membership included).
+    Delete memberships + boards on teardown.
+    """
+    boards: list[Board] = []
+    for owner in board_users:
+        board = Board(name=f"{owner.id}_owner_id_board", owner_id=owner.id)
+        db_session.add(board)
+        db_session.flush()
+        db_session.add(
+            BoardMembership(board_id=board.id, user_id=owner.id, role="owner")
+        )
+        boards.append(board)
+    db_session.commit()
+
+    yield boards
+
+    _delete_boards(db_session, [board.id for board in boards])

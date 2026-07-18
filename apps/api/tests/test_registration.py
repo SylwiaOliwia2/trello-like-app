@@ -3,8 +3,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from apps.api.tests.helpers.login_helpers import get_user_by_email_for_test
-from apps.api.tests.helpers.login_helpers import _totp_secret_from_otpauth_url
+from apps.api.tests.helpers.login_helpers import (
+    get_user_by_email_for_test,
+    _totp_secret_from_otpauth_url,
+)
+from apps.api.tests.fixtures.user_fixture import _delete_user
 
 
 @pytest.mark.smoke
@@ -28,6 +31,8 @@ def test_register_without_mfa_returns_201(
     assert user is not None
     assert user.email == "no_mfa.user@example.com"
     assert user.mfa_enabled is False
+
+    _delete_user(db_session, user.id)
 
 
 @pytest.mark.smoke

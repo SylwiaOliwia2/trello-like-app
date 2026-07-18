@@ -10,8 +10,6 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 
 from apps.api.main import Base, app, engine, get_db
-from apps.api.tests.fixtures.user_fixture import seed_baseline_users
-from apps.api.tests.fixtures.board_fixture import seed_board_per_user
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -37,27 +35,23 @@ def ensure_test_database_exists() -> None:
 
 @pytest.fixture(scope="session", autouse=True)
 def init_database_schema(ensure_test_database_exists: None) -> None:
+    # ensure it will never run on production database, only on test database
     Base.metadata.create_all(bind=engine)
 
 
 @pytest.fixture()
 def db_session(init_database_schema: None) -> Generator[Session, None, None]:
     connection = engine.connect()
-    transaction = connection.begin()
     session = Session(
         bind=connection,
-        join_transaction_mode="create_savepoint",
         autoflush=False,
         expire_on_commit=False,
     )
-    seed_baseline_users(session)
-    seed_board_per_user(session)
 
     try:
         yield session
     finally:
         session.close()
-        transaction.rollback()
         connection.close()
 
 

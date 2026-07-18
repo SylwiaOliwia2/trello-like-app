@@ -1,3 +1,4 @@
+from collections.abc import Callable, Generator
 from dataclasses import (
     dataclass,
 )  # NOTE: dataclass could be replaced by Pydantic, but Pydantic is heavier and will be overkill here.
@@ -7,10 +8,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from apps.api.main import User, hash_password
-from apps.api.tests.helpers.login_helpers import (
-    _login_json,
-    get_user_by_email_for_test,
-)
+from apps.api.models import Board, BoardMembership, MfaCode
+from apps.api.tests.helpers.login_helpers import _login_json
 
 SEEDED_USER_PASSWORD = "StrongPass123!"
 SEEDED_USER_NO_MFA_EMAIL = "fixture.user.no_mfa@example.com"
@@ -37,79 +36,112 @@ class LoggedInUser:
         return {"Authorization": f"Bearer {self.token}"}
 
 
-def seed_baseline_users(session: Session) -> None:
-    """
-    Insert baseline test users into the database.
-    """
-    session.add_all(
-        [
-            User(
-                email=SEEDED_USER_NO_MFA_EMAIL,
-                password_hash=hash_password(SEEDED_USER_PASSWORD),
-                mfa_enabled=False,
-                mfa_secret=None,
-            ),
-            User(
-                email=SEEDED_USER_WITH_MFA_EMAIL,
-                password_hash=hash_password(SEEDED_USER_PASSWORD),
-                mfa_enabled=True,
-                mfa_secret=FIXED_MFA_SECRET_FOR_TESTS,
-            ),
-            *[
-                User(
-                    email=email,
-                    password_hash=hash_password(SEEDED_USER_PASSWORD),
-                    mfa_enabled=False,
-                    mfa_secret=None,
-                )
-                for email in BOARD_USER_EMAILS
-            ],
-        ]
+def _delete_user(session: Session, user_id: int) -> None:
+    """Delete a user and rows that reference it."""
+
+    session.query(BoardMembership).filter(BoardMembership.user_id == user_id).delete(
+        synchronize_session=False
     )
+    session.query(MfaCode).filter(MfaCode.user_id == user_id).delete(
+        synchronize_session=False
+    )
+    session.query(User).filter(User.id == user_id).delete(synchronize_session=False)
     session.commit()
 
 
 @pytest.fixture()
-def registered_user_no_mfa(db_session: Session) -> User:
-    user = get_user_by_email_for_test(db_session, SEEDED_USER_NO_MFA_EMAIL)
-    assert user is not None, "baseline user missing; db_session seed may have failed"
-    return user
+def user_factory(
+    db_session: Session,
+) -> Generator[Callable[..., User], None, None]:
+    """Create users for a test; delete them (in reverse) on teardown."""
+    created_ids: list[int] = []
+
+    def _create_user(
+        *,
+        email: str,
+        password: str = SEEDED_USER_PASSWORD,
+        mfa_enabled: bool = False,
+        mfa_secret: str | None = None,
+    ) -> User:
+        user = User(
+            email=email,
+            password_hash=hash_password(password),
+            mfa_enabled=mfa_enabled,
+            mfa_secret=mfa_secret,
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        created_ids.append(user.id)
+        return user
+
+    yield _create_user
+
+    for user_id in reversed(created_ids):
+        _delete_user(db_session, user_id)
 
 
 @pytest.fixture()
-def registered_user_with_mfa(db_session: Session) -> User:
-    user = get_user_by_email_for_test(db_session, SEEDED_USER_WITH_MFA_EMAIL)
-    assert user is not None, "baseline user missing; db_session seed may have failed"
-    return user
+def registered_user_no_mfa(
+    user_factory: Callable[..., User],
+) -> Generator[User, None, None]:
+    user = user_factory(
+        email=SEEDED_USER_NO_MFA_EMAIL,
+        password=SEEDED_USER_PASSWORD,
+        mfa_enabled=False,
+        mfa_secret=None,
+    )
+    yield user
 
 
 @pytest.fixture()
-def logged_in_users(client: TestClient, db_session: Session) -> list[LoggedInUser]:
-    """
-    Log in 4 seeded no-MFA users.
-    Returns a list of logged-in users.
-    """
+def registered_user_with_mfa(
+    user_factory: Callable[..., User],
+) -> Generator[User, None, None]:
+    user = user_factory(
+        email=SEEDED_USER_WITH_MFA_EMAIL,
+        password=SEEDED_USER_PASSWORD,
+        mfa_enabled=True,
+        mfa_secret=FIXED_MFA_SECRET_FOR_TESTS,
+    )
+    yield user
+
+
+@pytest.fixture()
+def board_users(
+    user_factory: Callable[..., User],
+) -> Generator[list[User], None, None]:
+    # NOTE will it be properly cleaned up?
+    users = [
+        user_factory(email=email, password=SEEDED_USER_PASSWORD)
+        for email in BOARD_USER_EMAILS
+    ]
+    yield users
+
+
+@pytest.fixture()
+def logged_in_users(
+    client: TestClient,
+    board_users: list[User],
+    owned_boards: list[Board],
+) -> list[LoggedInUser]:
+    """Log in the 4 board users after their owned boards exist."""
+    _ = owned_boards
     users: list[LoggedInUser] = []
-    for email in BOARD_USER_EMAILS:
-        db_row = get_user_by_email_for_test(db_session, email)
-        assert db_row is not None, f"seeded user missing: {email}"
-
+    for board_user in board_users:
         response = client.post(
             "/auth/login",
-            json=_login_json(email, SEEDED_USER_PASSWORD),
+            json=_login_json(board_user.email, SEEDED_USER_PASSWORD),
         )
         assert (
             response.status_code == 200
-        ), f"login failed for {email}: {response.status_code} {response.text}"
-        token = response.json()["access_token"]
-
+        ), f"login failed for {board_user.email}: {response.status_code} {response.text}"
         users.append(
             LoggedInUser(
-                user_id=db_row.id,
-                email=email,
+                user_id=board_user.id,
+                email=board_user.email,
                 password=SEEDED_USER_PASSWORD,
-                token=token,
+                token=response.json()["access_token"],
             )
         )
-
     return users
