@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from apps.api.main import Board, BoardMembership
 from apps.api.tests.fixtures.user_fixture import LoggedInUser
-from apps.api.tests.helpers.board_helpers import seed_board_members
+from apps.api.tests.helpers.board_helpers import _delete_board, seed_board_members
 
 
 @pytest.mark.API
@@ -270,6 +270,8 @@ def test_user_can_create_a_board_and_becomes_board_owner(
     assert board_member["user_id"] == board_owner.user_id
     assert board_member["email"] == board_owner.email
     assert board_member["role"] == "owner"
+
+    _delete_board(db_session, response_json["id"])
 
 
 @pytest.mark.API
