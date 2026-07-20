@@ -111,7 +111,6 @@ def registered_user_with_mfa(
 def board_users(
     user_factory: Callable[..., User],
 ) -> Generator[list[User], None, None]:
-    # NOTE will it be properly cleaned up?
     users = [
         user_factory(email=email, password=SEEDED_USER_PASSWORD)
         for email in BOARD_USER_EMAILS
