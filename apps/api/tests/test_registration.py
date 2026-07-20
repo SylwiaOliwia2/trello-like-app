@@ -81,6 +81,8 @@ def test_register_with_mfa_returns_otpauth_url(
     assert user.email == mfa_payload["email"]
     assert user.mfa_enabled is True
 
+    _delete_user(db_session, user.id)
+
 
 @pytest.mark.regression
 @pytest.mark.API
@@ -96,11 +98,13 @@ def test_register_the_same_email_twice_returns_400(
 
     db_session.expire_all()
 
-    assert (
-        get_user_by_email_for_test(db_session, str(no_mfa_payload["email"])) is not None
-    )
+    user = get_user_by_email_for_test(db_session, str(no_mfa_payload["email"]))
+
+    assert user is not None
 
     # REGISTER SECOND TIME - FAILS WITH 400
     response = client.post("/auth/register", json=no_mfa_payload)
 
     assert response.status_code == 400
+
+    _delete_user(db_session, user.id)
