@@ -2,8 +2,15 @@ from typing import Callable
 
 from playwright.sync_api import Page, expect
 import re
+import allure
 import pytest
 from e2e.POM.home import HomePage
+
+
+pytestmark = [
+    allure.epic("Auth"),
+    allure.feature("login"),
+]
 
 
 @pytest.mark.smoke

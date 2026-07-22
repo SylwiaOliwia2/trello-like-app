@@ -1,4 +1,4 @@
-# Phased feature development and release cadence
+# Epics for feature development and tests
 
 ### Phase 1 — Foundation, auth, and “logged-in shell”
 
