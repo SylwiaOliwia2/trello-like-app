@@ -1,3 +1,4 @@
+import allure
 import pyotp
 import pytest
 from fastapi.testclient import TestClient
@@ -8,6 +9,11 @@ from apps.api.tests.helpers.login_helpers import (
     _totp_secret_from_otpauth_url,
 )
 from apps.api.tests.fixtures.user_fixture import _delete_user
+
+pytestmark = [
+    allure.epic("Auth"),
+    allure.feature("register"),
+]
 
 
 @pytest.mark.smoke

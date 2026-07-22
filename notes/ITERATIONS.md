@@ -1,10 +1,4 @@
-# Phased feature development and release cadence
-
-## Phase sizing (Goldilocks chunks)
-
-Each phase is **one vertical slice**: API + DB + minimal UI—not a single endpoint, not micro-tasks. Order respects dependencies (board ACL needs users first).
-
----
+# Epics for feature development and tests
 
 ### Phase 1 — Foundation, auth, and “logged-in shell”
 

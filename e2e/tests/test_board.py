@@ -2,12 +2,17 @@ from typing import Callable
 
 import re
 from playwright.sync_api import Page, expect, APIResponse
+import allure
 import pytest
 
 from e2e.POM.board import BoardPage
 from e2e.POM.home import HomePage
 
 
+pytestmark = allure.epic("Board")
+
+
+@allure.feature("management")
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_user_sees_all_his_boards_on_the_home_page(
@@ -35,6 +40,7 @@ def test_user_sees_all_his_boards_on_the_home_page(
     expect(home_page.board_link(member_board["id"])).to_be_visible()
 
 
+@allure.feature("management")
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_delete_board_asks_for_confirmation_first(
@@ -59,6 +65,7 @@ def test_delete_board_asks_for_confirmation_first(
     assert response.status == 200
 
 
+@allure.feature("management")
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_owner_can_cancel_board_deletion(
@@ -83,6 +90,7 @@ def test_owner_can_cancel_board_deletion(
     assert response.status == 200
 
 
+@allure.feature("management")
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_deleted_board_disappears_from_home(
@@ -104,6 +112,7 @@ def test_deleted_board_disappears_from_home(
     expect(home_page.board_link(board["id"])).not_to_be_visible()
 
 
+@allure.feature("management")
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_deleted_board_disappears_from_member_home(
@@ -133,6 +142,7 @@ def test_deleted_board_disappears_from_member_home(
     expect(member_home.board_link(board["id"])).not_to_be_visible()
 
 
+@allure.feature("membership")
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_removed_board_member_does_not_have_access_to_board(
@@ -171,6 +181,7 @@ def test_removed_board_member_does_not_have_access_to_board(
     expect(member_board_page.board_name).not_to_be_visible()
 
 
+@allure.feature("membership")
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_owner_can_add_member_using_dropdown_list(
@@ -196,6 +207,7 @@ def test_owner_can_add_member_using_dropdown_list(
     expect(board_page.member_item(member_id)).to_be_visible()
 
 
+@allure.feature("membership")
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_board_owner_sees_board_members_along_with_roles(
@@ -243,6 +255,7 @@ def test_board_owner_sees_board_members_along_with_roles(
     expect(board_page.member_role(owner_id)).to_have_text("owner")
 
 
+@allure.feature("membership")
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_board_member_can_leave_the_board(

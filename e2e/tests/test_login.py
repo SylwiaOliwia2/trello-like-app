@@ -2,6 +2,7 @@ import re
 from typing import Callable
 from urllib.parse import parse_qs, urlparse
 from playwright.sync_api import Page, expect
+import allure
 import pytest
 import pyotp
 
@@ -9,6 +10,10 @@ from e2e.POM.login import LoginPage
 from e2e.POM.home import HomePage
 
 
+pytestmark = allure.epic("Auth")
+
+
+@allure.feature("register")
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_register_button_redirects_to_register_page(page: Page) -> None:
@@ -18,6 +23,7 @@ def test_register_button_redirects_to_register_page(page: Page) -> None:
     expect(page).to_have_url(re.compile(".*register"))
 
 
+@allure.feature("login")
 @pytest.mark.regression
 @pytest.mark.e2e
 def test_wrong_email_format_displays_error_message(page: Page) -> None:
@@ -27,6 +33,7 @@ def test_wrong_email_format_displays_error_message(page: Page) -> None:
     assert login_page.email_input.get_attribute("required") is not None
 
 
+@allure.feature("login")
 @pytest.mark.regression
 @pytest.mark.security
 @pytest.mark.e2e
@@ -37,6 +44,7 @@ def test_login_password_is_masked(page: Page) -> None:
     assert login_page.password_input.get_attribute("type") == "password"
 
 
+@allure.feature("login")
 @pytest.mark.regression
 @pytest.mark.security
 @pytest.mark.e2e
@@ -47,6 +55,7 @@ def test_not_authenticated_user_cannot_access_home_page(page: Page) -> None:
     expect(page).to_have_url(re.compile(".*login"))
 
 
+@allure.feature("login")
 @pytest.mark.regression
 @pytest.mark.security
 @pytest.mark.e2e
@@ -70,6 +79,7 @@ def test_session_token_is_stored_after_succesfull_login(
     assert access_token is not None
 
 
+@allure.feature("login")
 @pytest.mark.regression
 @pytest.mark.security
 @pytest.mark.e2e
@@ -88,6 +98,7 @@ def test_wrong_password_does_not_allow_to_login(
     expect(page.get_by_text(re.compile(r".*invalid.*", re.IGNORECASE))).to_be_visible()
 
 
+@allure.feature("login")
 @pytest.mark.regression
 @pytest.mark.security
 @pytest.mark.e2e
@@ -106,6 +117,7 @@ def test_MFA_is_required_for_MFA_users(
     assert login_page.otp_input.get_attribute("required") is not None
 
 
+@allure.feature("login")
 @pytest.mark.regression
 @pytest.mark.security
 @pytest.mark.e2e

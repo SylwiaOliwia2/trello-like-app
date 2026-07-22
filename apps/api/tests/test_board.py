@@ -1,3 +1,4 @@
+import allure
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -6,7 +7,10 @@ from apps.api.main import Board, BoardMembership
 from apps.api.tests.fixtures.user_fixture import LoggedInUser
 from apps.api.tests.helpers.board_helpers import _delete_board, seed_board_members
 
+pytestmark = allure.epic("Board")
 
+
+@allure.feature("membership")
 @pytest.mark.API
 def test_board_owner_can_add_board_member(
     client: TestClient,
@@ -41,6 +45,7 @@ def test_board_owner_can_add_board_member(
     assert response_retrive.json()["id"] == board.id
 
 
+@allure.feature("management")
 @pytest.mark.API
 def test_user_can_not_create_board_with_empty_name(
     client: TestClient,
@@ -62,6 +67,7 @@ def test_user_can_not_create_board_with_empty_name(
     ), "Board with empty name can not be created!"
 
 
+@allure.feature("membership")
 @pytest.mark.API
 def test_user_sees_only_the_boards_that_he_belongs_to(
     client: TestClient,
@@ -81,6 +87,7 @@ def test_user_sees_only_the_boards_that_he_belongs_to(
     assert boards[0]["name"] == expected_board_name
 
 
+@allure.feature("membership")
 @pytest.mark.API
 def test_user_can_not_access_board_that_he_doesnt_belong_to(
     client: TestClient,
@@ -100,6 +107,7 @@ def test_user_can_not_access_board_that_he_doesnt_belong_to(
     assert response.json()["detail"] == "Not a board member"
 
 
+@allure.feature("membership")
 @pytest.mark.API
 def test_user_can_not_add_to_board_not_registered_email(
     client: TestClient,
@@ -131,6 +139,7 @@ def test_user_can_not_add_to_board_not_registered_email(
     ), "Not registered email can not be a board member!!"
 
 
+@allure.feature("management")
 @pytest.mark.API
 def test_unauthenticated_user_cannot_list_boards(
     client: TestClient,
@@ -141,6 +150,7 @@ def test_unauthenticated_user_cannot_list_boards(
     assert response.json()["detail"] == "Missing bearer token"
 
 
+@allure.feature("membership")
 @pytest.mark.API
 def test_board_owner_can_not_remove_himself_from_the_board_members(
     client: TestClient,
@@ -173,6 +183,7 @@ def test_board_owner_can_not_remove_himself_from_the_board_members(
     assert board_details["members"][0]["role"] == "owner"
 
 
+@allure.feature("management")
 @pytest.mark.API
 def test_board_owner_can_delete_the_board(
     client: TestClient,
@@ -198,6 +209,7 @@ def test_board_owner_can_delete_the_board(
     assert response_retrive.json()["detail"] == "Board not found"
 
 
+@allure.feature("membership")
 @pytest.mark.API
 def test_board_member_has_no_access_after_board_is_deleted(
     client: TestClient,
@@ -226,6 +238,7 @@ def test_board_member_has_no_access_after_board_is_deleted(
     assert response_retrive.json()["detail"] == "Board not found"
 
 
+@allure.feature("management")
 @pytest.mark.API
 def test_user_can_create_a_board_and_becomes_board_owner(
     client: TestClient,
@@ -274,6 +287,7 @@ def test_user_can_create_a_board_and_becomes_board_owner(
     _delete_board(db_session, response_json["id"])
 
 
+@allure.feature("membership")
 @pytest.mark.API
 def test_board_member_can_not_delete_the_board(
     client: TestClient,
@@ -303,6 +317,7 @@ def test_board_member_can_not_delete_the_board(
     assert response_retrive.json()["id"] == board.id
 
 
+@allure.feature("membership")
 @pytest.mark.API
 def test_board_member_can_not_remove_other_users_from_the_board(
     client: TestClient,
@@ -335,6 +350,7 @@ def test_board_member_can_not_remove_other_users_from_the_board(
     assert response_retrive.json()["id"] == board.id
 
 
+@allure.feature("membership")
 @pytest.mark.API
 def test_board_owner_can_not_add_member_twice(
     client: TestClient,

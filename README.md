@@ -1,80 +1,35 @@
-# Minimal QA Demo App
+# Pytest automation for a Trello-like app
 
-## Stack
+This repo’s main purpose is **QA**: API tests (pytest), E2E UI tests (Playwright), CI, reporting, and issue tracking.
 
-- `apps/web`: Vue 3 + Vite
-- `apps/api`: FastAPI (`/health`)
-- `docker compose`: local and CI runtime
+The Trello-like app (Vue + FastAPI, WIP) exists only as a **product under test** — effort went into the tests, not app polish. Due to that the app code was AI-assisted (Cursor).
 
-## Run locally (Docker only)
+---
 
-1. Start app:
-   - `docker compose up --build`
-2. Open:
-   - web: `http://127.0.0.1:5173`
-   - api swagger: `http://127.0.0.1:8000/docs`
-3. Stop:
-   - `docker compose down`
+## QA artifacts
 
-## Run in CI
+| Artifact                | Link                                                                                                                                                                                                                                                                                            |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Found issues            | [GitHub Issues](https://github.com/SylwiaOliwia2/trello-like-app/issues)                                                                                                                                                                                                                        |
+| CI workflows            | [GitHub Actions](https://github.com/SylwiaOliwia2/trello-like-app/actions)                                                                                                                                                                                                                      |
+| Allure reports          | [dev](https://sylwiaoliwia2.github.io/trello-like-app/dev/) · [stage](https://sylwiaoliwia2.github.io/trello-like-app/stage/) · [main](https://sylwiaoliwia2.github.io/trello-like-app/main/)                                                                                                   |
+| E2E failure screenshots | CI artifacts on PRs to **stage** / **main** (`e2e-screenshots-*`). Not uploaded on PRs to **dev**. Example: [run 26209428356](https://github.com/SylwiaOliwia2/trello-like-app/actions/runs/26209428356) — upload step ran, but **no screenshots** were produced (due to no Playwright errors). |
 
-Workflows under `.github/workflows/` run on PRs to `dev` / `stage` / `main`.
+---
 
-Each run produces:
+## Notes
 
-- **Allure results** are available at `https://sylwiaoliwia2.github.io/trello-like-app/<stage>/#`
+Docs under [`notes/`](notes/) explain the thinking behind the project:
 
-## Tests
+| File                                                 | What you’ll find                                        |
+| ---------------------------------------------------- | ------------------------------------------------------- |
+| [TEST_STRATEGY.md](notes/TEST_STRATEGY.md)           | Test levels, scope, and prioritization for this app     |
+| [ITERATIONS.md](notes/ITERATIONS.md)                 | Phased feature plan and acceptance criteria             |
+| [TECH_STACK.md](notes/TECH_STACK.md)                 | Stack choices and why (app + CI focused on testability) |
+| [TECHNICAL_COMMANDS.md](notes/TECHNICAL_COMMANDS.md) | How to run the app and tests locally / in CI            |
 
-Tests to run before merge to branch:
-
-- `make test-dev`
-- `make test-stage`
-- `make test-main`
-
-Other
-
-- `make test-api` - API only
-- `make test-e2e` - E2E only
+---
 
 ## Development
 
-### Run a single test
-
-Tests run inside the `test` profile containers. Override the pytest command to target one file, class, or test name. Make sure the app is up first (`docker compose up --build -d db api web`).
-
-API:
-
-- Single file: `docker compose --profile test run --rm api-test sh -c "python -m pytest apps/api/tests/test_board.py"`
-- Single test: `docker compose --profile test run --rm api-test sh -c "python -m pytest apps/api/tests/test_board.py::test_owner_can_add_member"`
-- By name match: `docker compose --profile test run --rm api-test sh -c "python -m pytest apps/api/tests -k add_member"`
-
-E2E:
-
-- Single file: `docker compose --profile test run --rm e2e-test sh -c "python -m pytest e2e/tests/test_board.py"`
-- Single test: `docker compose --profile test run --rm e2e-test sh -c "python -m pytest e2e/tests/test_board.py::test_user_sees_all_his_boards_on_the_home_page"`
-- By name match: `docker compose --profile test run --rm e2e-test sh -c "python -m pytest e2e/tests -k sees_all_his_boards"`
-
-### Pre-commit hook (auto-format)
-
-One-time setup:
-
-- `python3 -m pip install --user pre-commit`
-- if `pre-commit` command is not found, add local Python bin to PATH:
-  - `export PATH="$HOME/.local/bin:$PATH"`
-- `pre-commit install`
-
-On every `git commit` auto-formats Python (ruff) + JS/Vue/JSON/MD (prettier).
-Run on all files manually: `pre-commit run --all-files`.
-
-### Query the database locally
-
-Postgres runs in the `db` service (`app` / `app`).
-
-- **Shell inside the DB container** (no local `psql` install needed):
-  - App DB: `docker compose exec db psql -U app -d appdb`
-  - API test DB (exists after the first `api-test` run): `docker compose exec db psql -U app -d appdb_test`
-  - E2E test DB (created by `make test-e2e` / stage / main): `docker compose exec db psql -U app -d appdb_test_e2e`
-- **From your machine** (if `psql` is installed): `PGPASSWORD=app psql -h 127.0.0.1 -p 5432 -U app -d appdb`
-
-Use `\dt` for tables, `\q` to quit.
+See [notes/TECHNICAL_COMMANDS.md](notes/TECHNICAL_COMMANDS.md) for Docker, `make` targets, single-test commands, and DB access.

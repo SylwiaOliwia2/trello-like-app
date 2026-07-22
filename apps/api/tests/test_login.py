@@ -1,3 +1,4 @@
+import allure
 import pyotp
 import pytest
 import time
@@ -11,6 +12,11 @@ from apps.api.tests.fixtures.user_fixture import (
     SEEDED_USER_WITH_MFA_EMAIL,
 )
 from apps.api.tests.helpers.login_helpers import _login_json
+
+pytestmark = [
+    allure.epic("Auth"),
+    allure.feature("login"),
+]
 
 
 @pytest.mark.smoke

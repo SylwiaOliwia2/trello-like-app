@@ -2,9 +2,16 @@ import re
 from typing import Callable
 
 from playwright.sync_api import Page, expect, APIResponse
+import allure
 import pytest
 
 from e2e.POM.register import RegisterPage
+
+
+pytestmark = [
+    allure.epic("Auth"),
+    allure.feature("register"),
+]
 
 
 @pytest.mark.regression
