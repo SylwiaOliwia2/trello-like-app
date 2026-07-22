@@ -73,7 +73,8 @@ Postgres runs in the `db` service (`app` / `app`).
 
 - **Shell inside the DB container** (no local `psql` install needed):
   - App DB: `docker compose exec db psql -U app -d appdb`
-  - Test DB (exists after the first `api-test` run): `docker compose exec db psql -U app -d appdb_test`
+  - API test DB (exists after the first `api-test` run): `docker compose exec db psql -U app -d appdb_test`
+  - E2E test DB (created by `make test-e2e` / stage / main): `docker compose exec db psql -U app -d appdb_test_e2e`
 - **From your machine** (if `psql` is installed): `PGPASSWORD=app psql -h 127.0.0.1 -p 5432 -U app -d appdb`
 
 Use `\dt` for tables, `\q` to quit.

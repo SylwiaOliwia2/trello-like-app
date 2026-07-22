@@ -92,13 +92,14 @@ def test_wrong_password_does_not_allow_to_login(
 @pytest.mark.security
 @pytest.mark.e2e
 def test_MFA_is_required_for_MFA_users(
-    page: Page, registered_mfa_user: dict[str, str]
+    page: Page, make_mfa_user: Callable[..., dict[str, str]]
 ) -> None:
+    user = make_mfa_user()
     login_page = LoginPage(page)
     login_page.navigate()
 
-    login_page.provide_email(registered_mfa_user["email"])
-    login_page.provide_password(registered_mfa_user["password"])
+    login_page.provide_email(user["email"])
+    login_page.provide_password(user["password"])
     login_page.click_login()
 
     expect(login_page.otp_input).to_be_visible()
@@ -109,17 +110,18 @@ def test_MFA_is_required_for_MFA_users(
 @pytest.mark.security
 @pytest.mark.e2e
 def test_mfa_user_is_prompted_for_mfa_on_every_login(
-    page: Page, registered_mfa_user: dict[str, str]
+    page: Page, make_mfa_user: Callable[..., dict[str, str]]
 ):
+    user = make_mfa_user()
     # login
     login_page = LoginPage(page)
     login_page.navigate()
 
-    login_page.provide_email(registered_mfa_user["email"])
-    login_page.provide_password(registered_mfa_user["password"])
+    login_page.provide_email(user["email"])
+    login_page.provide_password(user["password"])
     login_page.click_login()
 
-    parsed = urlparse(registered_mfa_user["mfa_otpauth_url"])
+    parsed = urlparse(user["mfa_otpauth_url"])
     secret = parse_qs(parsed.query).get("secret", [""])[0]
     assert secret, "Missing TOTP secret in mfa_otpauth_url"
     otp = pyotp.TOTP(secret).now()
@@ -140,8 +142,8 @@ def test_mfa_user_is_prompted_for_mfa_on_every_login(
     login_page = LoginPage(page)
     login_page.navigate()
 
-    login_page.provide_email(registered_mfa_user["email"])
-    login_page.provide_password(registered_mfa_user["password"])
+    login_page.provide_email(user["email"])
+    login_page.provide_password(user["password"])
     login_page.click_login()
 
     expect(login_page.otp_input).to_be_visible()

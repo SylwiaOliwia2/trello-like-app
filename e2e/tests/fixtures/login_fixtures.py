@@ -9,6 +9,7 @@ import pyotp
 from playwright.sync_api import APIRequestContext, APIResponse, Browser, Page
 
 from e2e.POM.home import HomePage
+from e2e.tests.helpers.db_cleanup import delete_user
 
 
 def _register_page_for_screenshots(request: pytest.FixtureRequest, page: Page) -> None:
@@ -36,7 +37,10 @@ def api_login(
 @pytest.fixture()
 def make_user(
     api_request_context: APIRequestContext,
-) -> Callable[..., dict[str, str]]:
+) -> Generator[Callable[..., dict[str, str]], None, None]:
+    """Register users via API; delete them (in reverse) on teardown."""
+    created_ids: list[int] = []
+
     def _make_user(password: str = "StrongPass123!") -> dict[str, str]:
         email = f"e2e_{uuid.uuid4().hex}@example.com"
         resp = api_request_context.post(
@@ -45,16 +49,27 @@ def make_user(
         )
         if not resp.ok:
             raise RuntimeError(f"Register failed: {resp.status} {resp.text()}")
-        return {"id": id, "email": email, "password": password}
+        user_id = resp.json().get("id")
+        if user_id is None:
+            raise RuntimeError(
+                f"Expected user id in register response, got: {resp.json()}"
+            )
+        created_ids.append(int(user_id))
+        return {"id": str(user_id), "email": email, "password": password}
 
-    return _make_user
+    yield _make_user
+
+    for user_id in reversed(created_ids):
+        delete_user(user_id)
 
 
 @pytest.fixture()
 def make_user_with_token(
     make_user: Callable[..., dict[str, str]],
     api_request_context: APIRequestContext,
-) -> Callable[..., dict[str, str]]:
+) -> Generator[Callable[..., dict[str, str]], None, None]:
+    """Register + login users; user rows are cleaned up by `make_user` teardown."""
+
     def _make_user_with_token(password: str = "StrongPass123!") -> dict[str, str]:
         user = make_user(password=password)
         resp = api_request_context.post(
@@ -72,46 +87,60 @@ def make_user_with_token(
             raise RuntimeError(f"Expected access_token in response, got: {resp.json()}")
         return {**user, "token": str(token)}
 
-    return _make_user_with_token
+    yield _make_user_with_token
 
 
 @pytest.fixture()
-def registered_mfa_user(
+def make_mfa_user(
     api_request_context: APIRequestContext,
-) -> dict[str, str]:
-    email = f"e2e_mfa_{uuid.uuid4().hex}@example.com"
-    password = "StrongPass123!"
-    resp = api_request_context.post(
-        "/auth/register",
-        data={"email": email, "password": password, "mfa_enabled": True},
-    )
-    if not resp.ok:
-        raise RuntimeError(f"Register failed: {resp.status} {resp.text()}")
-    data = resp.json()
-    otpauth_url = str(data.get("mfa_otpauth_url") or "")
-    parsed = urlparse(otpauth_url)
-    secret = parse_qs(parsed.query).get("secret", [""])[0]
-    if not secret:
-        raise RuntimeError(f"Expected secret in mfa_otpauth_url, got: {data}")
-    otp = pyotp.TOTP(secret).now()
+) -> Generator[Callable[..., dict[str, str]], None, None]:
+    """Register MFA users via API; delete them (in reverse) on teardown."""
+    created_ids: list[int] = []
 
-    confirm_resp = api_request_context.post(
-        "/auth/register/confirm",
-        data={
-            "registration_token": data.get("registration_token"),
-            "otp": otp,
-        },
-    )
-    if not confirm_resp.ok:
-        raise RuntimeError(
-            f"MFA confirm failed: {confirm_resp.status} {confirm_resp.text()}"
+    def _make_mfa_user(password: str = "StrongPass123!") -> dict[str, str]:
+        email = f"e2e_mfa_{uuid.uuid4().hex}@example.com"
+        resp = api_request_context.post(
+            "/auth/register",
+            data={"email": email, "password": password, "mfa_enabled": True},
         )
+        if not resp.ok:
+            raise RuntimeError(f"Register failed: {resp.status} {resp.text()}")
+        data = resp.json()
+        otpauth_url = str(data.get("mfa_otpauth_url") or "")
+        parsed = urlparse(otpauth_url)
+        secret = parse_qs(parsed.query).get("secret", [""])[0]
+        if not secret:
+            raise RuntimeError(f"Expected secret in mfa_otpauth_url, got: {data}")
+        otp = pyotp.TOTP(secret).now()
 
-    return {
-        "email": email,
-        "password": password,
-        "mfa_otpauth_url": otpauth_url,
-    }
+        confirm_resp = api_request_context.post(
+            "/auth/register/confirm",
+            data={
+                "registration_token": data.get("registration_token"),
+                "otp": otp,
+            },
+        )
+        if not confirm_resp.ok:
+            raise RuntimeError(
+                f"MFA confirm failed: {confirm_resp.status} {confirm_resp.text()}"
+            )
+        user_id = confirm_resp.json().get("id")
+        if user_id is None:
+            raise RuntimeError(
+                f"Expected user id in confirm response, got: {confirm_resp.json()}"
+            )
+        created_ids.append(int(user_id))
+        return {
+            "id": str(user_id),
+            "email": email,
+            "password": password,
+            "mfa_otpauth_url": otpauth_url,
+        }
+
+    yield _make_mfa_user
+
+    for user_id in reversed(created_ids):
+        delete_user(user_id)
 
 
 @pytest.fixture()
