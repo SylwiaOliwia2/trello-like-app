@@ -1,3 +1,4 @@
+import allure
 import pyotp
 import pytest
 import time
@@ -5,12 +6,17 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from apps.api.main import MfaCode, User
-from apps.api.tests.fixtures.user_fixtures import (
+from apps.api.tests.fixtures.user_fixture import (
     FIXED_MFA_SECRET_FOR_TESTS,
     SEEDED_USER_PASSWORD,
     SEEDED_USER_WITH_MFA_EMAIL,
 )
 from apps.api.tests.helpers.login_helpers import _login_json
+
+pytestmark = [
+    allure.epic("Auth"),
+    allure.feature("login"),
+]
 
 
 @pytest.mark.smoke

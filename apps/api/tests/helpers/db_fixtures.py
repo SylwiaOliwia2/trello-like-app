@@ -35,33 +35,23 @@ def ensure_test_database_exists() -> None:
 
 @pytest.fixture(scope="session", autouse=True)
 def init_database_schema(ensure_test_database_exists: None) -> None:
+    # ensure it will never run on production database, only on test database
     Base.metadata.create_all(bind=engine)
 
 
 @pytest.fixture()
 def db_session(init_database_schema: None) -> Generator[Session, None, None]:
-    """One connection + outer transaction"""
-    with engine.begin() as cleanup_conn:
-        # TODO: replace it with normal session, as it will remove real users on the prod!!!
-        cleanup_conn.execute(text("TRUNCATE TABLE users RESTART IDENTITY CASCADE"))
-
     connection = engine.connect()
-    transaction = connection.begin()
     session = Session(
         bind=connection,
-        join_transaction_mode="create_savepoint",
         autoflush=False,
         expire_on_commit=False,
     )
-    # Imported here so pytest can load `user_fixtures` as a plugin first
-    from apps.api.tests.fixtures.user_fixtures import seed_baseline_users
 
-    seed_baseline_users(session)
     try:
         yield session
     finally:
         session.close()
-        transaction.rollback()
         connection.close()
 
 

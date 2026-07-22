@@ -1,10 +1,4 @@
-# Phased feature development and release cadence
-
-## Phase sizing (Goldilocks chunks)
-
-Each phase is **one vertical slice**: API + DB + minimal UI—not a single endpoint, not micro-tasks. Order respects dependencies (board ACL needs users first).
-
----
+# Epics for feature development and tests
 
 ### Phase 1 — Foundation, auth, and “logged-in shell”
 
@@ -30,9 +24,24 @@ Each phase is **one vertical slice**: API + DB + minimal UI—not a single endpo
 
 **Build**
 
-- **Board** CRUD; **board membership**: owner (creator) + invited members; non-members cannot read/write board (simplify to “owner + members with same capability” unless you want viewer/editor roles—pick one and document in README).
+- **Board** CRUD; **board membership**: owner (creator) + invited members; non-members cannot read/write board (simplify to “owner + members with same capability” unless you want editor roles—pick one and document in README). Unlike in Trello, there are no workspaces. Instead the user permissions are assigned directly to the board.
 - API: invite/add user to board by email or username; list boards visible to user.
 - UI: board list, create board, open board shell (lists area can be empty).
+
+#### User acceptance criteria
+
+- Given a user has boards they own or belong to, when they log in, then they see those boards on the home page.
+- Given a logged-in user, when they create a board, then they see it on the list of "my boards".
+- Given a user is a board member, when they open the board, then they see all board members along with their roles.
+- Given a user is a board member, when they choose to leave the board, then they are removed from the board membership.
+- Given a user is a board member (not the owner), when they open the board, then they cannot remove other users from the board.
+- Given a user is a board member (not the owner), when they open the board, then they cannot delete the board.
+- Given a user is a board owner, when they open the board, then they can add or remove a board member by selecting their email from the dropdown list.
+- Given a user is a board owner, when they open the board, then they can delete it.
+- Given a user is a board owner, when they press the "Delete board" button, then they see a confirmation popup and the board is not deleted until confirmed.
+- Given a user is a board owner, when they open the board, then they cannot remove themselves from the board membership.
+- Given a user is not a board member, when they open the home page, then they do not see boards they do not belong to.
+- Given a user is not a board member, when they enter the board URL, then they cannot see the board content.
 
 ---
 

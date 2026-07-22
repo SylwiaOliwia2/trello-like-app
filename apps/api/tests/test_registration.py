@@ -1,10 +1,19 @@
+import allure
 import pyotp
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from apps.api.tests.helpers.login_helpers import get_user_by_email_for_test
-from apps.api.tests.helpers.login_helpers import _totp_secret_from_otpauth_url
+from apps.api.tests.helpers.login_helpers import (
+    get_user_by_email_for_test,
+    _totp_secret_from_otpauth_url,
+)
+from apps.api.tests.fixtures.user_fixture import _delete_user
+
+pytestmark = [
+    allure.epic("Auth"),
+    allure.feature("register"),
+]
 
 
 @pytest.mark.smoke
@@ -28,6 +37,8 @@ def test_register_without_mfa_returns_201(
     assert user is not None
     assert user.email == "no_mfa.user@example.com"
     assert user.mfa_enabled is False
+
+    _delete_user(db_session, user.id)
 
 
 @pytest.mark.smoke
@@ -76,6 +87,8 @@ def test_register_with_mfa_returns_otpauth_url(
     assert user.email == mfa_payload["email"]
     assert user.mfa_enabled is True
 
+    _delete_user(db_session, user.id)
+
 
 @pytest.mark.regression
 @pytest.mark.API
@@ -91,11 +104,13 @@ def test_register_the_same_email_twice_returns_400(
 
     db_session.expire_all()
 
-    assert (
-        get_user_by_email_for_test(db_session, str(no_mfa_payload["email"])) is not None
-    )
+    user = get_user_by_email_for_test(db_session, str(no_mfa_payload["email"]))
+
+    assert user is not None
 
     # REGISTER SECOND TIME - FAILS WITH 400
     response = client.post("/auth/register", json=no_mfa_payload)
 
     assert response.status_code == 400
+
+    _delete_user(db_session, user.id)

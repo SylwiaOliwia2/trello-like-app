@@ -1,14 +1,27 @@
+from typing import Callable
+
 from playwright.sync_api import Page, expect
 import re
+import allure
 import pytest
 from e2e.POM.home import HomePage
+
+
+pytestmark = [
+    allure.epic("Auth"),
+    allure.feature("login"),
+]
 
 
 @pytest.mark.smoke
 @pytest.mark.security
 @pytest.mark.e2e
-def test_session_terminates_after_logout(logged_in_page: Page) -> None:
-    page = logged_in_page
+def test_session_terminates_after_logout(
+    make_user_with_token: Callable[..., dict[str, str]],
+    make_logged_in_page: Callable[[str], Page],
+) -> None:
+    user = make_user_with_token()
+    page = make_logged_in_page(user["token"])
     home_page = HomePage(page)
     home_page.navigate()
 

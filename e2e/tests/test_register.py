@@ -1,11 +1,17 @@
 import re
+from typing import Callable
 
-import requests
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, expect, APIResponse
+import allure
 import pytest
 
 from e2e.POM.register import RegisterPage
-from e2e.tests.helpers.api_helpers import post_auth_login
+
+
+pytestmark = [
+    allure.epic("Auth"),
+    allure.feature("register"),
+]
 
 
 @pytest.mark.regression
@@ -37,7 +43,7 @@ def test_register_password_is_masked(page: Page) -> None:
 
 @pytest.mark.regression
 def test_wrong_confirm_password_does_not_allow_to_register(
-    page: Page, e2e_api_url: str, api_session: requests.Session
+    page: Page, api_login: Callable[..., APIResponse]
 ) -> None:
     email = "wrong_confirm_password@example.com"
     password = "password"
@@ -52,8 +58,6 @@ def test_wrong_confirm_password_does_not_allow_to_register(
 
     expect(page.get_by_text("Passwords do not match")).to_be_visible()
 
-    # Check if the account does not exists in teh database
-    resp = post_auth_login(
-        e2e_api_url=e2e_api_url, api_session=api_session, email=email, password=password
-    )
-    assert resp.status_code == 401
+    # # Confirm that the user cannot log in with these credentials
+    resp = api_login(email, password)
+    assert resp.status == 401
