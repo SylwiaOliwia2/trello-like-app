@@ -3,3 +3,5 @@ playwright==1.53.0
 requests==2.32.4
 allure-pytest==2.13.5
 pyotp==2.9.0
+SQLAlchemy==2.0.41
+psycopg2-binary==2.9.10

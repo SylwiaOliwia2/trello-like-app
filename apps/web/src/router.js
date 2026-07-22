@@ -2,12 +2,19 @@ import { createRouter, createWebHistory } from "vue-router";
 import LoginPage from "./views/LoginPage.vue";
 import RegisterPage from "./views/RegisterPage.vue";
 import HomePage from "./views/HomePage.vue";
+import BoardPage from "./views/BoardPage.vue";
 
 const routes = [
   { path: "/", redirect: "/home" },
   { path: "/login", component: LoginPage, meta: { guestOnly: true } },
   { path: "/register", component: RegisterPage, meta: { guestOnly: true } },
   { path: "/home", component: HomePage, meta: { requiresAuth: true } },
+  {
+    path: "/boards/:id",
+    component: BoardPage,
+    meta: { requiresAuth: true },
+    props: true,
+  },
 ];
 
 const router = createRouter({

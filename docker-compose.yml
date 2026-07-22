@@ -14,6 +14,8 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: ${API_DATABASE_URL:-postgresql+psycopg2://app:app@db:5432/appdb}
     ports:
       - "8000:8000"
     depends_on:
@@ -54,6 +56,7 @@ services:
       E2E_BASE_URL: http://web:5173
       E2E_API_URL: http://api:8000
       E2E_HEADLESS: "true"
+      DATABASE_URL: postgresql+psycopg2://app:app@db:5432/appdb_test_e2e
       PYTHONPATH: /app
     command: ["python", "-m", "pytest", "-q", "e2e/tests"]
     volumes:
@@ -61,6 +64,7 @@ services:
     depends_on:
       - web
       - api
+      - db
     profiles:
       - test
 

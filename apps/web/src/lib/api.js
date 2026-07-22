@@ -6,11 +6,11 @@ const API_BASE =
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
-    ...options,
   });
 
   let data = null;
@@ -54,4 +54,57 @@ export async function getMe(token) {
       Authorization: `Bearer ${token}`,
     },
   });
+}
+
+function authHeaders(token) {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function listBoards(token) {
+  return request("/boards", { headers: authHeaders(token) });
+}
+
+export async function createBoard(token, name) {
+  return request("/boards", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function getBoard(token, boardId) {
+  return request(`/boards/${boardId}`, { headers: authHeaders(token) });
+}
+
+export async function deleteBoard(token, boardId) {
+  return request(`/boards/${boardId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+}
+
+export async function addBoardMember(token, boardId, email) {
+  return request(`/boards/${boardId}/members`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function removeBoardMember(token, boardId, userId) {
+  return request(`/boards/${boardId}/members/${userId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+}
+
+export async function leaveBoard(token, boardId) {
+  return request(`/boards/${boardId}/leave`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export async function listUsers(token) {
+  return request("/users", { headers: authHeaders(token) });
 }
