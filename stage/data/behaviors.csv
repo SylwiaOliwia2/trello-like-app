@@ -1,2 +1,6 @@
 "BROKEN","EPIC","FAILED","FEATURE","PASSED","SKIPPED","STORY","UNKNOWN"
-"0","","0","","25","1","","0"
+"0","Auth","0","login","16","1","","0"
+"0","Auth","0","register","8","0","","0"
+"0","Board","0","management","9","0","","0"
+"0","Board","0","membership","13","0","","0"
+"0","","0","","1","0","","0"
